@@ -2,8 +2,12 @@
 title: "Decision Tree Lab"
 author: "Amanda Rein, Belen Gomez Grimaldi, Kay Mattern"
 date: "4/28/2021"
-output: html_document
-editor_options: 
+output:
+  html_document:
+    toc: TRUE
+    theme: journal
+    toc_float: TRUE
+editor_options:
   chunk_output_type: console
 ---
 
@@ -11,40 +15,6 @@ editor_options:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-Congrats! You just graduated from medical school and got a PhD in Data Science at the same time, wow impressive. Because of these incredible accomplishments the world now believes you will be able to cure cancer...no pressure. To start you figured you better create some way to detect cancer when present. Luckily because you are now a MD and DS PhD or MDSDPhD, you have access to data sets and know your way around a ML classifier. So, on the way to fulfilling your destiny to rig the world of cancer you start by building several classifiers that can be used to aid in determining if patients have cancer and the type of tumor. 
-
-The included dataset (clinical_data_breast_cancer_modified.csv) has information 
-on 105 patients across 17 variables, your goal is to build two classifiers one 
-for PR.Status (progesterone receptor), a biomarker that routinely leads to a 
-cancer diagnosis, indicating if there was a positive or negative outcome and 
-one for the Tumor a multi-class variable . You would like to be able to explain 
-the model to the mere mortals around you but need a fairly robust and flexible 
-approach so you've chosen to use decision trees to get started. In building both
-models us CART and C5.0 and compare the differences. 
-
-In doing so, similar to great data scientists of the past, you remembered 
-the excellent education provided to you at UVA in a 
-undergrad data science course and have outlined steps that will need to be 
-undertaken to complete this task (you can add more or combine if needed).  
-As always, you will need to make sure to #comment your work heavily and 
-render the results in a clear report (knitted) as the non MDSDPhDs of the 
-world will someday need to understand the wonder and spectacle that will 
-be your R code. Good luck and the world thanks you. 
-
- Footnotes: 
--	Some of the steps will not need to be repeated for the second model, use your judgment
--	You can add or combine steps if needed
--	Also, remember to try several methods during evaluation and always be mindful of how the model will be used in practice.
-- Do not include ER.Status in your first tree it's basically the same as PR.Status
-
-
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-
-```
-
-Libraries
 ```{r load-packages, include=FALSE}
 install.packages("rio")
 library(rio)
@@ -62,7 +32,6 @@ install.packages("rpart.plot")
 library(rpart.plot)
 install.packages("rattle")
 library(rattle)
-# setwd("/cloud/project/decision_trees")
 install.packages("caret")
 library(caret)
 install.packages("C50")
@@ -71,51 +40,63 @@ install.packages("naniar")
 library(naniar)
 ```
 
+# Cleaning the Data
+In order to prepare the data for decision tree training, we first removed ER.Status because it contains essentially the same information as PR.Status. Next, we removed Days.to.date.of.Death because, as the missing variable plot shows, this variable was missing for a lot of patients. Additionally, we dropped any cases after that that were not complete. 
+
+We thought that this would be enough, but we soon learned that there were some columns that had an imbalance of information, causing our models to not build correctly. We had two solutions for this problem. First, we dropped the Gender, Metastasis, and Metastasis.Coded columns because they did not provide very much information because only a couple of patients had different values. Also, we collapsed the Stage columns (AJCC.Stage and Converted.Stage) so that the information in those columns was more balanced while still maintaining the factors. To do this, we put, for example, all Stage I, Stage IA, Stage IB variables into one category. Finally, we dropped any patients that contained unique values in the columns because if they ended up in the test set, then we would run into issues introducing new values into the decision tree.
+
+After that, we were ready to start creating our trees! We broke down the remaining 102 patients into test and training sets.
 ```{r, message=FALSE, echo = FALSE, warning=FALSE}
 #1 Load the data and ensure the column names don't have spaces, hint check.names.  
 cancer <- tibble(import("clinical_breast_cleaned.csv", check.names= TRUE))
+gg_miss_var(cancer)
 cancer <- select(cancer, -c(ER.Status, Days.to.date.of.Death)) # ER.Status same as PR.Status, Days.to.date.of.Death has lots of missing values, rest has new levels in predict
 # gg_miss_var(cancer)
 cancer <- cancer[complete.cases(cancer), ]
 describe(cancer)
 
-```
+cancer$AJCC.Stage <- fct_collapse(cancer$AJCC.Stage,
+                               I = c("Stage I", "Stage IA", "Stage IB"),
+                               II =c("Stage II", "Stage IIA", "Stage IIB"),
+                               III = c("Stage III", "Stage IIIA", "Stage IIIB", "Stage IIIC"),
+                               IV = c("Stage IV"))
+cancer$Converted.Stage <- fct_collapse(cancer$Converted.Stage,
+                               None = c("No_Conversion"),
+                               I =c("Stage I"),
+                               II = c("Stage IIA", "Stage IIB"),
+                               III = c("Stage IIIA", "Stage IIIB", "Stage IIIC"))
 
-```{r, message=FALSE, echo = FALSE, warning=FALSE}
-#2 Ensure all the variables are classified correctly and ensure the target variable for "PR.Status" is 0 for negative and 1 for positive
 
+cancer <- cancer[-c(1, 7,8)]
+cancer <- cancer[cancer$HER2.Final.Status != "Equivocal", ]
+cancer <- cancer[cancer$AJCC.Stage != "IV", ]
 
-```
+cancer$HER2.Final.Status <- as.factor(cancer$HER2.Final.Status)
 
-```{r, message=FALSE, echo = FALSE, warning=FALSE}
-#3 Don't check for correlated variables....because it doesn't matter with Decision Trees...that was easy
-```
-
-
-```{r, message=FALSE, echo = FALSE, warning=FALSE}
-#4 Split your data into test and train using the caret
 
 x <- createDataPartition(cancer$PR.Status,times=1,p = 0.8,list=FALSE)
 training <- cancer[x,]
 test <- cancer[-x,]
-```
-
-```{r}
-
-#5 Guess what, you also don't need to standardize the data, because DTs don't 
-# give a ish, they make local decisions...keeps getting easier 
 
 ```
 
+## Analysis for PR.Status and Tumor {.tabset}
+
+After cleaning our data, we began our analysis on both the PR.Status variable and the Tumor variable. Since PR.Status is a binary variable, we chose to run a CART-style analysis to create a decision tree. On the other hand, Tumor is a multi-class variable, so a C5.0 analysis makes more sense. 
+
+### PR.Status - RPart (CART style)
+
+#### Base Rate
+The base rate is 51.4% for identifying whether PR.Status is positive or not. 
 ```{r, message=FALSE, echo = FALSE, warning=FALSE}
-#6 Ok now determine the baserate for the classifier, what does this number mean.  
-#For the multi-class this will be the individual percentages for each class. 
-
 (x <- 1- sum(cancer$PR.Status)/length(cancer$PR.Status)) # 48.57% have biomarker for PR.Status
 
-table(cancer$Tumor) # 15 have T1, 65 have T2, 19 have T3, and 6 have T4
+split <- table(cancer$PR.Status)[2] / sum(table(cancer$PR.Status))
+split
 ```
 
+#### Building the Model
+To build the model, we used the R
 ```{r, message=FALSE, echo = FALSE, warning=FALSE}
 #7 Build your model using the default settings
 set.seed(1981)
@@ -139,7 +120,7 @@ tree_prstatus # root, Days.to.date.of.Last.Contact
 rpart.plot(tree_prstatus, type =4, extra = 101)#package rpart.plot
 #export this to  pdf for better viewing
 
-#The "cptable" element includes the optimal prunning based on the complexity parameter.
+#The "cptable" element includes the optimal pruning based on the complexity parameter.
 View(tree_prstatus$cptable)
 
 ```
@@ -173,27 +154,32 @@ View(tree_predict)
 ```{r, message=FALSE, echo = FALSE, warning=FALSE}
 #12 Generate, "by-hand", the hit rate and detection rate and compare the 
 #detection rate to your original baseline rate. How did your models work?
+install.packages("e1071")
+library(e1071)
+par_conf_matrix <- confusionMatrix(as.factor(tree_predict), as.factor(test$PR.Status), positive = "1", dnn=c("Prediction", "Actual"), mode = "sens_spec")
+
+conf_matrix <- par_conf_matrix$table
 
 # The error rate is defined as a classification of "Parent" when 
 # this is not the case, and vice versa. It's the sum of all the
 # values where a column contains the opposite value of the row.
-sum(par_conf_matrix[row(par_conf_matrix)!= col(par_conf_matrix)])
-# 59
+sum(conf_matrix[row(conf_matrix)!= col(conf_matrix)])
+# 10
 
 
 # The error rate divides this figure by the total number of data points
 # for which the forecast is created.
-sum(par_conf_matrix)
+sum(conf_matrix)
 
 # Let's use these values in 1 calculation.
-par_error_rate = sum(par_conf_matrix[row(par_conf_matrix) != col(par_conf_matrix)]) / sum(par_conf_matrix)
+par_error_rate = sum(conf_matrix[row(conf_matrix) != col(conf_matrix)]) / sum(conf_matrix)
 
 paste0("Hit Rate/True Error Rate:", par_error_rate * 100, "%")
 
 #Detection Rate is the rate at which the algo detects the positive class in proportion to the entire classification A/(A+B+C+D) where A is poss correctly predicted
-par_conf_matrix
+conf_matrix
 
-par_conf_matrix[2,2]/sum(par_conf_matrix)
+conf_matrix[2,2]/sum(conf_matrix)
 
 table(cancer$PR.Status)
 
@@ -203,7 +189,9 @@ tree_example_prob = predict(tree_prstatus,test, type= "prob")
 View(tree_example_prob)
 
 #Let's 
-roc(cancer$PR.Status, ifelse(tree_example_prob[,'not_PR.Status'] >= .50,0,1), plot=TRUE)
+
+tree_example_prob[,"0"]
+roc(test$PR.Status, ifelse(tree_example_prob[,"0"] >= .50,0,1), plot=TRUE)
 
 ```
 
@@ -212,13 +200,13 @@ roc(cancer$PR.Status, ifelse(tree_example_prob[,'not_PR.Status'] >= .50,0,1), pl
 #check a variety of metrics and comment on the metric that might be best for 
 #each type of analysis.  
 
-confusionMatrix(as.factor(tree_predict), as.factor(test$PR.Status), positive = "PR.Status", dnn=c("Prediction", "Actual"), mode = "sens_spec")
+confusionMatrix(as.factor(tree_predict), as.factor(test$PR.Status), positive = "1", dnn=c("Prediction", "Actual"), mode = "sens_spec")
 ```
 
 ```{r, message=FALSE, echo = FALSE, warning=FALSE}
 #14 Generate a ROC and AUC output, interpret the results
 
-par_roc <- roc(cancer$PR.Status, as.numeric(tree_predict), plot = TRUE) #Building the evaluation ROC and AUV using the predicted and original target variables 
+par_roc <- roc(test$PR.Status, as.numeric(tree_predict), plot = TRUE) #Building the evaluation ROC and AUV using the predicted and original target variables 
 
 par_roc
 
@@ -229,6 +217,98 @@ plot(par_roc)
 #15 Follow the same steps for the multi-class target, tumor, aside from step 1, 
 # 2 and 14. For step 13 compare to the four base rates and see how you did. 
 ```
+
+### PR.Status - Caret (C5.0 style)
+
+```{r, message=FALSE, echo = FALSE, warning=FALSE}
+install.packages("C50")
+library(C50) #Need this to pass into caret 
+install.packages("mlbench")
+library(mlbench)
+
+#Cross validation process 
+
+fitControl <- trainControl(method = "repeatedcv",
+  number = 10,
+  repeats = 5, returnResamp="all") #setting up our cross validation
+
+# number - number of folds
+# repeats - number of times the cv is repeated, here it's 5 take the average of
+# those 5 repeats
+
+# Choose the features and classes
+
+View(training)
+
+training$PR.Status <- as.factor(training$PR.Status)
+test$PR.Status <- as.factor(test$PR.Status)
+
+
+features <- as.data.frame(training[,c(-2)])
+target <- as.factor(training$PR.Status)
+
+str(features)
+str(target)
+
+typeof(features)
+typeof(grid)
+typeof(target)
+typeof(fitControl)
+
+grid <- expand.grid(.winnow = c(TRUE,FALSE), .trials=c(1,5,10,15,20), .model="tree" )
+
+# grid <- as.data.frame(grid)
+
+#expand.grid - function in caret that will essentially conduct a hyper-parameter 
+# and select the best options
+# expand.grid(grid)
+
+#winnow - whether to reduce the feature space - uses a regulator/penalty
+#trails - number of boosting iterations to try, 1 indicates a single model 
+#model - type of ml model
+typeof(grid)
+
+PR_mdl <- train(x=features,y=target,tuneGrid=grid,trControl=fitControl,method="C5.0",verbose=TRUE)
+
+PR_mdl
+
+View(PR_mdl$pred)
+
+# visualize the re-sample distributions
+xyplot(PR_mdl,type = c("g", "p", "smooth"))
+
+varImp(PR_mdl)
+
+
+
+```
+
+Let's use the model to predict and the evaluate the performance
+```{r, message=FALSE, echo = FALSE, warning=FALSE}
+PR_predict = predict(PR_mdl,test)
+?predict
+# 
+# cancer_tree <- C5.0(as.factor(PR.Status) ~ ., training)
+# cancer_tree
+# cancer_tree_pred <- predict(PR_mdl, test)
+
+View(as_tibble(nhanes_tree_pred))
+
+
+#Lets use the confusion matrix
+
+confusionMatrix(as.factor(wine_predict), as.factor(test_w$text_rank), 
+                dnn=c("Prediction", "Actual"), mode = "sens_spec")
+
+table(test_w$text_rank)
+
+
+wine_predict_p = predict(wine_mdl,test_w, type= "prob")
+
+
+
+```
+
 
 ```{r, message=FALSE, echo = FALSE, warning=FALSE}
 # 16 Summarize what you learned for each model along the way and make 
