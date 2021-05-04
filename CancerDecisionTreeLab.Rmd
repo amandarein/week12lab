@@ -524,7 +524,10 @@ grid <- expand.grid(.winnow = c(TRUE,FALSE), .trials=c(1,5,10,15,20), .model="tr
 #winnow - whether to reduce the feature space - uses a regulator/penalty
 #trails - number of boosting iterations to try, 1 indicates a single model 
 #model - type of ml model
+
 features <- as.data.frame(training[,c(-2)])
+features <- features[, -c(2,3,4,5,6,7,8)]
+
 target <- as.factor(training$PR.Status)
 
 
@@ -544,37 +547,23 @@ varImp(PR_mdl)
 
 Let's use the model to predict and the evaluate the performance
 ```{r, message=FALSE, echo = FALSE, warning=FALSE}
-
-PR_mdl$finalModel
-PR_predict = predict(PR_mdl$finalModel,test)
-?predict
+PR_predict = predict(PR_mdl,test, type="raw")
 
 
-features <- training[,c(-2)]
-target <- training$PR.Status
-
-c_tree_1 <- C5.0(x=features,y=target, trials=1, winnow=FALSE, control=C5.0Control(earlyStopping=FALSE))
-c_tree_1
-
-
-c_tree_pred_1 <- predict(c_tree_1, test)
-
-c_tree_pred_1
-c_tree_pred_2
-View(as_tibble(cancer_tree_pred))
+View(as_tibble(PR_predict))
 
 
 #Lets use the confusion matrix
 
-confusionMatrix(as.factor(wine_predict), as.factor(test_w$text_rank), 
+confusionMatrix(as.factor(PR_predict), as.factor(test$PR.Status), 
                 dnn=c("Prediction", "Actual"), mode = "sens_spec")
 
-table(test_w$text_rank)
+table(test$PR.Status)
 
 
-wine_predict_p = predict(wine_mdl,test_w, type= "prob")
+PR_predict_p = predict(PR_mdl,test, type= "prob")
 
-
+PR_predict_p
 
 ```
 
