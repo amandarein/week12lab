@@ -516,14 +516,6 @@ test$PR.Status <- as.factor(test$PR.Status)
 features <- as.data.frame(training[,c(-2)])
 target <- as.factor(training$PR.Status)
 
-str(features)
-str(target)
-
-typeof(features)
-typeof(grid)
-typeof(target)
-typeof(fitControl)
-
 grid <- expand.grid(.winnow = c(TRUE,FALSE), .trials=c(1,5,10,15,20), .model="tree" )
 
 # grid <- as.data.frame(grid)
@@ -535,46 +527,46 @@ grid <- expand.grid(.winnow = c(TRUE,FALSE), .trials=c(1,5,10,15,20), .model="tr
 #winnow - whether to reduce the feature space - uses a regulator/penalty
 #trails - number of boosting iterations to try, 1 indicates a single model 
 #model - type of ml model
-typeof(grid)
+
+features <- as.data.frame(training[,c(-2)])
+features <- features[, -c(2,3,4,5,6,7,8)]
+
+target <- as.factor(training$PR.Status)
+
 
 PR_mdl <- train(x=features,y=target,tuneGrid=grid,trControl=fitControl,method="C5.0",verbose=TRUE)
 
 PR_mdl
 
-View(PR_mdl$pred)
+str(PR_mdl$pred)
 
 # visualize the re-sample distributions
 xyplot(PR_mdl,type = c("g", "p", "smooth"))
 
 varImp(PR_mdl)
 
-
-
+# parameters = trials: 20, model = tree, winnow = FALSE
 ```
 
 Let's use the model to predict and the evaluate the performance
 ```{r, message=FALSE, echo = FALSE, warning=FALSE}
-PR_predict = predict(PR_mdl,test)
-?predict
-# 
-# cancer_tree <- C5.0(as.factor(PR.Status) ~ ., training)
-# cancer_tree
-# cancer_tree_pred <- predict(PR_mdl, test)
+PR_predict = predict(PR_mdl,test, type="raw")
 
-View(as_tibble(nhanes_tree_pred))
+
+View(as_tibble(PR_predict))
 
 
 #Lets use the confusion matrix
 
-confusionMatrix(as.factor(wine_predict), as.factor(test_w$text_rank), 
+confusionMatrix(as.factor(PR_predict), as.factor(test$PR.Status), 
                 dnn=c("Prediction", "Actual"), mode = "sens_spec")
 
-table(test_w$text_rank)
+table(test$PR.Status)
 
 
-wine_predict_p = predict(wine_mdl,test_w, type= "prob")
+PR_predict_p = predict(PR_mdl,test, type= "prob")
 
-
+PR_predict_p
 
 ```
 
