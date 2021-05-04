@@ -37,38 +37,32 @@ be your R code. Good luck and the world thanks you.
 -	Also, remember to try several methods during evaluation and always be mindful of how the model will be used in practice.
 - Do not include ER.Status in your first tree it's basically the same as PR.Status
 
-
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-
-```
-
-Libraries
 ```{r load-packages, include=FALSE}
-install.packages("rio")
+#install.packages("rio")
 library(rio)
-install.packages("plyr")
+#install.packages("plyr")
 library(plyr)
-install.packages("tidyverse")
+#install.packages("tidyverse")
 library(tidyverse)
-install.packages("rpart")
+#install.packages("rpart")
 library(rpart)
-install.packages("psych")
+#install.packages("psych")
 library(psych)
-install.packages("pROC")
+#install.packages("pROC")
 library(pROC)
-install.packages("rpart.plot")
+#install.packages("rpart.plot")
 library(rpart.plot)
-install.packages("rattle")
+#install.packages("rattle")
 library(rattle)
 # setwd("/cloud/project/decision_trees")
-install.packages("caret")
+#install.packages("caret")
 library(caret)
-install.packages("C50")
-install.packages("mlbench")
-install.packages("naniar")
+#install.packages("C50")
+#install.packages("mlbench")
+#install.packages("naniar")
 library(naniar)
+#install.packages("e1071")
+library(e1071)
 ```
 
 ```{r, message=FALSE, echo = FALSE, warning=FALSE}
@@ -140,7 +134,7 @@ rpart.plot(tree_prstatus, type =4, extra = 101)#package rpart.plot
 #export this to  pdf for better viewing
 
 #The "cptable" element includes the optimal prunning based on the complexity parameter.
-View(tree_prstatus$cptable)
+#View(tree_prstatus$cptable)
 
 ```
 
@@ -164,10 +158,10 @@ tree_prstatus$frame
 
 tree_predict = predict(tree_prstatus,test, type= "class")
 
-View(as.data.frame(tree_predict))
+#View(as.data.frame(tree_predict))
 
-#tree_predict <- as.numeric(tree_predict)
-View(tree_predict)
+tree_predict <- as.numeric(tree_predict)
+#View(tree_predict)
 ```
 
 ```{r, message=FALSE, echo = FALSE, warning=FALSE}
@@ -191,7 +185,7 @@ par_error_rate = sum(par_conf_matrix[row(par_conf_matrix) != col(par_conf_matrix
 paste0("Hit Rate/True Error Rate:", par_error_rate * 100, "%")
 
 #Detection Rate is the rate at which the algo detects the positive class in proportion to the entire classification A/(A+B+C+D) where A is poss correctly predicted
-par_conf_matrix
+#par_conf_matrix
 
 par_conf_matrix[2,2]/sum(par_conf_matrix)
 
@@ -200,7 +194,7 @@ table(cancer$PR.Status)
 #We can adjust using a if else statement and the predicted prob
 
 tree_example_prob = predict(tree_prstatus,test, type= "prob")
-View(tree_example_prob)
+#View(tree_example_prob)
 
 #Let's 
 roc(cancer$PR.Status, ifelse(tree_example_prob[,'not_PR.Status'] >= .50,0,1), plot=TRUE)
@@ -212,7 +206,7 @@ roc(cancer$PR.Status, ifelse(tree_example_prob[,'not_PR.Status'] >= .50,0,1), pl
 #check a variety of metrics and comment on the metric that might be best for 
 #each type of analysis.  
 
-confusionMatrix(as.factor(tree_predict), as.factor(test$PR.Status), positive = "PR.Status", dnn=c("Prediction", "Actual"), mode = "sens_spec")
+#confusionMatrix(as.factor(tree_predict), as.factor(test$PR.Status), positive = "PR.Status", dnn=c("Prediction", "Actual"), mode = "sens_spec")
 ```
 
 ```{r, message=FALSE, echo = FALSE, warning=FALSE}
@@ -225,9 +219,220 @@ par_roc
 plot(par_roc)
 ```
 
+## **Multi-Class Prediction: Tumors**
+
+Next, we will build another decision tree to predict the type of tumor a patient has. There are four classes of tumors (T1, T2, T3, T4). 
+
 ```{r, message=FALSE, echo = FALSE, warning=FALSE}
 #15 Follow the same steps for the multi-class target, tumor, aside from step 1, 
 # 2 and 14. For step 13 compare to the four base rates and see how you did. 
+cancer2 <- tibble(import("clinical_breast_cleaned.csv", check.names= TRUE))
+cancer2 <- select(cancer2, -c(Days.to.date.of.Death)) #Days.to.date.of.Death has lots of missing values, rest has new levels in predict
+cancer2 <- cancer2[complete.cases(cancer2), ]
+describe(cancer2)
+```
+
+```{r, message=FALSE, echo = FALSE, warning=FALSE}
+# Split into train/test
+
+split <- createDataPartition(cancer2$Tumor,times=1,p = 0.8,list=FALSE)
+training2 <- cancer2[split,]
+test2 <- cancer2[-split,]
+
+```
+
+### Base Rates
+
+The base rates for the four tumor classes are:
+
+- T1 = 14.29%
+
+- T2 = 61.90%
+
+- T3 = 18.10%
+
+- T4 = 5.71%
+
+```{r, message=FALSE, echo = FALSE, warning=FALSE}
+# Calculate Baserates
+table(cancer2$Tumor)
+
+t1_base <- sum(cancer2$Tumor == "T1") / length(cancer2$Tumor) # 14.29%
+t2_base <- sum(cancer2$Tumor == "T2") / length(cancer2$Tumor) # 61.90%
+t3_base <- sum(cancer2$Tumor == "T3") / length(cancer2$Tumor) # 18.10%
+t4_base <- sum(cancer2$Tumor == "T4") / length(cancer2$Tumor) # 5.71%
+
+```
+
+### Building the Multi-Class CART Model
+```{r, message=FALSE, echo = FALSE, warning=FALSE}
+# Build model with default settings
+
+set.seed(1981)
+tree_tumor = rpart(Tumor~.,  #<- formula, response variable ~ predictors
+                           #   "." means "use all other variables in data"
+                            method = "class",#<- specify method, use "class" for tree
+                            parms = list(split = "gini"),#<- method for choosing tree split
+                            data = training2,#<- data used
+                            control = rpart.control(cp=.01))
+
+```
+
+Based on the model with default settings, the most important variable is AJCC.Stage, which describes the amount and spread of cancer in a patient's body. 
+```{r, message=FALSE, echo = FALSE, warning=FALSE}
+# View results, most important variable
+
+tree_tumor
+
+# Most important variable is AJCC.Stage
+
+```
+
+#### Decision Tree Plot
+```{r, message=FALSE, echo = FALSE, warning=FALSE}
+# Plot the tree using the rpart.plot package (CART only).
+rpart.plot(tree_tumor, type =4, extra = 101)
+
+#The "cptable" element includes the optimal prunning based on the complexity parameter.
+#View(tree_tumor$cptable)
+```
+
+#### CP Chart
+The CP (complexity paramter) chart below helps us determine the optimal size of the tree. Based on our plot, the optimal size is 4.
+```{r, message=FALSE, echo = FALSE, warning=FALSE}
+# Plot the cp chart and note the optimal size of the tree (CART only).
+
+plotcp(tree_tumor) #Produces a "elbow chart" for various cp values, it's actually a terrible chart, but somewhat useful, dashed line represents the highest cross-validated error minus the minimum cross-validated error, plus the standard deviation of the error at that tree. A reasonable choice of cp for pruning is often the leftmost value where the mean is less than the horizontal line. Not the difference between the size of tree and the nsplits. Size is the number of terminal nodes. 
+
+cptable_ex <- as_tibble(tree_tumor$cptable)
+cptable_ex
+
+#Shows the reduction in error provided by include the variable 
+tree_tumor$variable.importance
+
+```
+
+```{r, message=FALSE, echo = FALSE, warning=FALSE}
+#Use the predict function and your models to predict the target variable using
+#test set. 
+
+tree_tumor$frame
+
+tree_predict2 = predict(tree_tumor, test2, type= "class")
+
+#View(as.data.frame(tree_predict2))
+
+tree_predict <- as.numeric(tree_predict)
+#View(tree_predict)
+```
+
+#### Evaluate Performance
+```{r, message=FALSE, echo = FALSE, warning=FALSE}
+# Generate, "by-hand", the hit rate and detection rate and compare the 
+#detection rate to your original baseline rate. How did your models work?
+
+tum_conf_matrix = table(tree_predict2, test2$Tumor)
+
+# The error rate is defined as a classification of "Parent" when 
+# this is not the case, and vice versa. It's the sum of all the
+# values where a column contains the opposite value of the row.
+sum(tum_conf_matrix[row(tum_conf_matrix)!= col(tum_conf_matrix)])
+# 59
+
+
+# The error rate divides this figure by the total number of data points
+# for which the forecast is created.
+sum(tum_conf_matrix)
+
+# Let's use these values in 1 calculation.
+tum_error_rate = sum(tum_conf_matrix[row(tum_conf_matrix) != col(tum_conf_matrix)]) / sum(tum_conf_matrix)
+
+paste0("Hit Rate/True Error Rate:", tum_error_rate * 100, "%")
+
+#Detection Rate is the rate at which the algo detects the positive class in proportion to the entire classification A/(A+B+C+D) where A is poss correctly predicted
+tum_conf_matrix
+
+tum_conf_matrix[2,2]/sum(tum_conf_matrix)
+
+table(cancer2$Tumor)
+
+#We can adjust using a if else statement and the predicted prob
+
+tree_example_prob2 = predict(tree_tumor,test2, type= "prob")
+View(tree_example_prob2)
+
+#Let's 
+roc(cancer2$Tumor, ifelse(tree_example_prob2[,c('T2', 'T3', 'T4')] >= .50,0,1), plot=TRUE)
+
+roc(cancer2$Tumor, ifelse(tree_example_prob2[,c('T1', 'T3', 'T4')] >= .50,0,1), plot=TRUE)
+```
+
+### Building the Multi-Class C5.0 Model
+```{r}
+#Cross validation process 
+
+fitControl <- trainControl(method = "repeatedcv",
+  number = 10,
+  repeats = 5, returnResamp="all") #setting up our cross validation
+
+# number - number of folds
+# repeats - number of times the cv is repeated, here it's 5 take the average of
+# those 5 repeats
+
+# Choose the features and classes
+
+#View(training2)
+
+features <- training2[,c(-6)]
+target <- training2$Tumor
+
+str(features)
+str(target)
+
+grid <- expand.grid(.winnow = c(TRUE,FALSE), .trials=c(1,5,10,15,20), .model="tree" )
+
+#expand.grid - function in caret that will essentially conduct a hyper-parameter 
+# and select the best options
+
+#winnow - whether to reduce the feature space - uses a regulator/penalty
+#trails - number of boosting iterations to try, 1 indicates a single model 
+#model - type of ml model
+
+tumor_mdl <- train(x=features,y=target,tuneGrid=grid,trControl=fitControl,method="C5.0"
+            ,verbose=TRUE)
+
+tumor_mdl
+
+#View(tumor_mdl$pred)
+
+# visualize the re-sample distributions
+xyplot(tumor_mdl,type = c("g", "p", "smooth"))
+
+varImp(tumor_mdl)
+
+
+
+```
+
+#### Evaluate Performance
+```{r}
+wine_predict = predict(wine_mdl,test_w, type= "raw")
+
+#View(as_tibble(wine_predict))
+
+
+#Lets use the confusion matrix
+
+confusionMatrix(as.factor(wine_predict), as.factor(test_w$text_rank), 
+                dnn=c("Prediction", "Actual"), mode = "sens_spec")
+
+table(test_w$text_rank)
+
+
+wine_predict_p = predict(wine_mdl,test_w, type= "prob")
+
+
+
 ```
 
 ```{r, message=FALSE, echo = FALSE, warning=FALSE}
