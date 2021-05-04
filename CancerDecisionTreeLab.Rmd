@@ -432,7 +432,10 @@ fitControl <- trainControl(method = "repeatedcv",
 
 #View(training2)
 
-features <- training2[,c(-6)]
+training2 <- subset(training2, select=-c(Gender, ER.Status, HER2.Final.Status, Node.Coded, Metastasis, Metastasis.Coded))
+test2 <- subset(test2, select=-c(Gender, ER.Status, HER2.Final.Status, Node.Coded, Metastasis, Metastasis.Coded))
+
+features <- subset(training2, select=-c(Tumor))
 target <- training2$Tumor
 
 str(features)
