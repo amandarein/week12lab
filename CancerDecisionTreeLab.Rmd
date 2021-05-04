@@ -250,7 +250,7 @@ par_roc
 plot(par_roc)
 ```
 
-## **Multi-Class Prediction: Tumors**
+## **Multi-Class Prediction: Tumors** {.tabset}
 
 Next, we will build another decision tree to predict the type of tumor a patient has. There are four classes of tumors (T1, T2, T3, T4). 
 
@@ -343,6 +343,8 @@ tree_tumor$variable.importance
 
 ```
 
+#### Prediction
+We use the tree generated previously on the training dataset to predict the tumor classes with the test dataset.
 ```{r, message=FALSE, echo = FALSE, warning=FALSE}
 #Use the predict function and your models to predict the target variable using
 #test set. 
@@ -353,7 +355,7 @@ tree_predict2 = predict(tree_tumor, test2, type= "class")
 
 #View(as.data.frame(tree_predict2))
 
-tree_predict <- as.numeric(tree_predict)
+tree_predict2 <- as.numeric(tree_predict2)
 #View(tree_predict)
 ```
 
@@ -367,38 +369,54 @@ tum_conf_matrix = table(tree_predict2, test2$Tumor)
 # The error rate is defined as a classification of "Parent" when 
 # this is not the case, and vice versa. It's the sum of all the
 # values where a column contains the opposite value of the row.
-sum(tum_conf_matrix[row(tum_conf_matrix)!= col(tum_conf_matrix)])
+#sum(tum_conf_matrix[tum_conf_matrix[,'T1'] != tum_conf_matrix[,'T1']])
 # 59
 
+error_t1 = sum(tum_conf_matrix[c(2,3),1]/sum(tum_conf_matrix[,1])) * 100
+error_t2 = sum(tum_conf_matrix[c(1,3),2]/sum(tum_conf_matrix[,2])) * 100
+error_t3 = sum(tum_conf_matrix[c(2,1),3]/sum(tum_conf_matrix[,3])) * 100
+error_t4 = sum(tum_conf_matrix[c(1,2,3),4]/sum(tum_conf_matrix[,4])) * 100
 
 # The error rate divides this figure by the total number of data points
 # for which the forecast is created.
-sum(tum_conf_matrix)
+#sum(tum_conf_matrix)
 
 # Let's use these values in 1 calculation.
-tum_error_rate = sum(tum_conf_matrix[row(tum_conf_matrix) != col(tum_conf_matrix)]) / sum(tum_conf_matrix)
+#tum_error_rate = sum(tum_conf_matrix[row(tum_conf_matrix) != col(tum_conf_matrix)]) / sum(tum_conf_matrix)
 
 paste0("Hit Rate/True Error Rate:", tum_error_rate * 100, "%")
 
 #Detection Rate is the rate at which the algo detects the positive class in proportion to the entire classification A/(A+B+C+D) where A is poss correctly predicted
 tum_conf_matrix
 
-tum_conf_matrix[2,2]/sum(tum_conf_matrix)
+det_t1 = tum_conf_matrix[1,1]/sum(tum_conf_matrix[,1]) * 100
+det_t2 = tum_conf_matrix[2,2]/sum(tum_conf_matrix[,2]) * 100
+det_t3 = tum_conf_matrix[3,3]/sum(tum_conf_matrix[,3]) * 100
+det_t4 = tum_conf_matrix[3,4]/sum(tum_conf_matrix[,4]) * 100
 
-table(cancer2$Tumor)
+#table(cancer2$Tumor)
 
 #We can adjust using a if else statement and the predicted prob
 
-tree_example_prob2 = predict(tree_tumor,test2, type= "prob")
-View(tree_example_prob2)
+tree_example_prob2 = predict(tree_tumor, test2, type= "prob")
+ 
+multiclass.roc(test2$Tumor, ifelse(tree_example_prob2[,'T1'] >= .05,0,1), plot=TRUE)
+multiclass.roc(test2$Tumor, ifelse(tree_example_prob2[,'T2'] >= .17 ,0,1), plot=TRUE)
+multiclass.roc(test2$Tumor, ifelse(tree_example_prob2[,'T3'] >= .49,0,1), plot=TRUE)
+multiclass.roc(test2$Tumor, ifelse(tree_example_prob2[,'T4'] >= .38,0,1), plot=TRUE)
 
-#Let's 
-roc(cancer2$Tumor, ifelse(tree_example_prob2[,c('T2', 'T3', 'T4')] >= .50,0,1), plot=TRUE)
-
-roc(cancer2$Tumor, ifelse(tree_example_prob2[,c('T1', 'T3', 'T4')] >= .50,0,1), plot=TRUE)
 ```
+T1 - The error rate for T1 is 33.33% and the detection rate is 66.67%. Compared to the base rate of 14.29%, the model does a decent job at predicting T1 tumors. In terms of the ROC curve, a threshold of 0.05 maximizes the AUC at 0.6816.
+
+T2 = The error rate for T2 is 23.08% and the detection rate is 76.92%. Compared to the base rate of 61.90%, the model improves the accuracy of predicting a T2 tumor. The ROC curve with a threshold of 0.17 maximizes the AUC at 0.6752.
+
+T3 - The error rate for T3 is 33.33% and the detection rate is 66.67%. Compared to the base rate of 18.10%, the model significantly improves the accuracy of predicting a T3 tumor. In terms of the ROC curve, a threshold of 0.49 gives us an ROC that appears to have a slope of 1, but the AUC is 0.7585. Therefore, the ROC curve for T3 tumors is not entirely accurate and we should be cautious with information provided by this curve.
+
+T4 - The error rate for T4 is 100% and the detection rate is 0%. This means that the test set had only 1 individual with a T4 tumor, and that tumor was not correctly predicted. Since there are only 6 individuals with T4 tumors in the original dataset, this is not too shocking. Although the ROC curve is not particularly useful in this situation, we achieve an AUC of 0.485 when the threshold is set to 0.38. 
+
 
 ### Building the Multi-Class C5.0 Model
+Now, we will build a multi-class decision tree for tumor detection using the C5.0 algorithm.
 ```{r}
 #Cross validation process 
 
