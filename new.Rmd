@@ -106,8 +106,6 @@ CART analysis tends to be more useful for binary predictions, so we think that t
 The base rate is 51.9% for identifying whether PR.Status is positive or not. 
 ```{r, message=FALSE, echo = FALSE, warning=FALSE}
 cancer$PR.Status <- as.numeric(cancer$PR.Status)
-(x <- 1- sum(cancer$PR.Status)/length(cancer$PR.Status)) # 48.57% have biomarker for PR.Status
-# (x <- 1- sum(cancer$PR.Status)/length(cancer$PR.Status)) # 48.57% have biomarker for PR.Status
 
 split <- table(cancer$PR.Status)[2] / sum(table(cancer$PR.Status))
 # split
@@ -456,7 +454,7 @@ tree_tumor
 ```
 
 ##### Decision Tree Plot
-As we can see in the plot below, T4 is not used for training. This is unsurprising since there are only 6 individuals in the dataset with T4 tumors.
+As we can see in the plot below, T3 and T4 are not used for training. This is unsurprising since there are very few individuals in the dataset with T3 and T4 tumors.
 ```{r, message=FALSE, echo = FALSE, warning=FALSE}
 # Plot the tree using the rpart.plot package (CART only).
 rpart.plot(tree_tumor, type =4, extra = 101)
@@ -477,7 +475,7 @@ cptable_ex <- as_tibble(tree_tumor$cptable)
 ```
 
 ##### Variable Importance
-Based on the model with default settings, the most important variable is AJCC.Stage, which describes the amount and spread of cancer in a patient's body.
+Based on the model with default settings, the most important variable is Converted.Stage.
 ```{r, message=FALSE, echo = FALSE, warning=FALSE}
 #Shows the reduction in error provided by include the variable
 tree_tumor$variable.importance
@@ -486,7 +484,6 @@ tree_tumor$variable.importance
 
 ##### Prediction
 We use the tree generated previously on the training dataset to predict the tumor classes with the test dataset.
-
 ```{r, message=FALSE, include = FALSE, warning=FALSE}
 
 #Use the predict function and your models to predict the target variable using
@@ -501,15 +498,10 @@ tree_predict2 = predict(tree_tumor, test2,type= "class")
 ```
 
 ##### Evaluate Performance
-Looking at the table below, the model only predicts tumors as T2 and T3, so overall the error rate is pretty high (33.33%). Since T2 and T3 tumors have the highest base rates (are most common in the data), this is not too shocking.
+Looking at the table below, the model only predicts tumors as T2, so overall the error rate is pretty high (40%). Since T2 has one of the highest base rates (as it is the most common in the data), this is not too shocking.
 
-T1 - The error rate for T1 is 100% and the detection rate is 0%. There is only 1 T1 tumor in the test set and it is being incorrectly identified as a T2 tumor.
+T2 = The error rate for T2 is 40% and the detection rate is 60%. Compared to the base rate of 61.90%, the model is not helpful for predicting T2.
 
-T2 = The error rate for T2 is 14.29% and the detection rate is 66.67%. Compared to the base rate of 61.90%, the model slightly improves the accuracy of predicting a T2 tumor.
-
-T3 - The error rate for T3 is 0% and the detection rate is 14.29%. The model correctly identifies all 3 T3 tumors correctly. Compared to the base rate of 18.10%, this is a big improvement. In terms of the ROC curve, a threshold of 0.49 gives us an ROC that appears to have a slope of 1, but the AUC is 0.7585.
-
-T4 - This type of tumor was not used for training the model due to its low prevalence in the data. Therefore, we are unsurprised that 3 T4 tumors are being incorrectly identified as T3 tumors when we use the model.
 ```{r, message=FALSE, echo = FALSE, warning=FALSE}
 # Generate, "by-hand", the hit rate and detection rate and compare the
 #detection rate to your original baseline rate. How did your models work?
@@ -627,18 +619,12 @@ set.seed(1982)
 tumor_mdl <- train(x=features,y=target,tuneGrid=grid,trControl=fitControl,method="C5.0"
             ,verbose=TRUE)
 
-```
-
-
-```{r, message=FALSE, echo = FALSE, warning=FALSE}
 tumor_mdl
-
-#View(tumor_mdl$pred)
 
 ```
 
 ##### Creating Tree
-The XY plot below visualizes the accuracy for different numbers of trials. It is clear that the number of trials does not have a significant impact on the accuracy. When creating the tree, we encountered issues with predicting the model on the test data. If we use all columns in the dataset for prediction, we can create a tree with up to 83% accuracy. However, due to undefined cases in the data, we are unable to use this model for prediction. Therefore, we removed 10 columns in order to create a tree that is useful for prediction. 
+The XY plot below visualizes the accuracy for different numbers of trials. It is clear that the number of trials does not have a significant impact on the accuracy. When creating the tree, we encountered issues with predicting the model on the test data. If we use all columns in the dataset for prediction, we can create a tree with up to 83% accuracy. Due to undefined cases in the data, we are unable to use this model for prediction. Therefore, we removed 10 columns in order to create a tree that is useful for prediction. 
 
 ```{r, message=FALSE, echo = FALSE, warning=FALSE}
 # visualize the re-sample distributions
@@ -649,36 +635,21 @@ xyplot(tumor_mdl,type = c("g", "p", "smooth"))
 ```
 
 ##### Evaluate Performance
-Due to the complications with prediction, we can only evaluate our tree using 5 columns. As evident in our confusion matrix, the model does not perform very well. Although all the T2 tumors were correctly predicted, all but one of the other tumors were incorrectly classified as a T2 tumor. The accuracy is 66.67%, which isn't terrible, but knowing that only the T2 tumors are being classified correctly, we are not impressed with this number. We have a Kappa value of 0.0667, which is very low. Overall, the C5.0 model we generated to predict the tumor class is not successful, and is much worse in comparison to the CART model. 
+We ended up using 1 trial, a tree model, and winnowing because it was found to maximize accuracy. This can be seen in the plot below, in which number of trials doesn't make much of a difference but winnowing increases accuracy a bit.
+
+Due to the complications with prediction, we can only evaluate our tree using a few columns. As evident in our confusion matrix, the model does not perform very well. The accuracy is 60%, which isn't terrible, but knowing that only the T2 tumors are being predicted, we are not impressed with this number. We have a Kappa value of 0, which is the worst that it could be! Overall, the C5.0 model we generated to predict the tumor class is not successful and is much worse in comparison to the CART model. 
 
 ```{r, message=FALSE, include = FALSE, warning=FALSE}
 
-#test2$Tumor <- as.numeric(test2$Tumor)
 tumor_predict = predict(tumor_mdl, test2, type= "raw")
-# View(as.data.frame(tumor_predict))
-
-#View(as_tibble(wine_predict))
-
-
 #Lets use the confusion matrix
 
-tumC50CM <- confusionMatrix(as.factor(tumor_predict), as.factor(test2$Tumor), 
+cM <- confusionMatrix(as.factor(tumor_predict), as.factor(test2$Tumor), 
                  dnn=c("Prediction", "Actual"), mode = "sens_spec")
-
-
-tumC50CM
-#table(test2$Tumor)
-
 
 tumor_predict_p = predict(tumor_mdl,test2, type= "prob")
 
 
 ```
 
-
-
-```{r, message=FALSE, echo = FALSE, warning=FALSE}
-# 16 Summarize what you learned for each model along the way and make
-# recommendations to the world on how this could be used moving forward,
-# being careful not to over promise.
-```
+# Conclusion
