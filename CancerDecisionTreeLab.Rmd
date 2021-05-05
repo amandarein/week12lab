@@ -331,10 +331,10 @@ PR_predict_p = predict(PR_mdl,test, type= "prob")
 
 
 
-<!-- #### **** {.tabset} -->
 ### Multi-Class Prediction: Tumors {.tabset}
 
 Next, we will build another decision tree to predict the type of tumor a patient has. There are four classes of tumors (T1, T2, T3, T4). 
+
 #### RPART (CART style)
 ```{r, message=FALSE, echo = FALSE, warning=FALSE}
 #15 Follow the same steps for the multi-class target, tumor, aside from step 1, 
@@ -514,14 +514,16 @@ fitControl <- trainControl(method = "repeatedcv",
 
 #View(training2)
 
-training2 <- subset(training2, select=-c(Gender, ER.Status, HER2.Final.Status, Node.Coded, Metastasis, Metastasis.Coded))
-test2 <- subset(test2, select=-c(Gender, ER.Status, HER2.Final.Status, Node.Coded, Metastasis, Metastasis.Coded))
+training2 <- subset(training2, select=-c(Gender, ER.Status, HER2.Final.Status, Node.Coded, Metastasis, Metastasis.Coded, AJCC.Stage, Converted.Stage, Survival.Data.Form, Vital.Status))
+test2 <- subset(test2, select=-c(Gender, ER.Status, HER2.Final.Status, Node.Coded, Metastasis, Metastasis.Coded, AJCC.Stage, Converted.Stage, Survival.Data.Form, Vital.Status))
 
-features <- subset(training2, select=-c(Tumor))
-target <- training2$Tumor
+features <- subset(training2, select=-c(Tumor,Gender))
+target <- as.factor(training2$Tumor)
 
 str(features)
 str(target)
+
+features <- as.data.frame(features)
 
 grid <- expand.grid(.winnow = c(TRUE,FALSE), .trials=c(1,5,10,15,20), .model="tree" )
 
@@ -532,6 +534,8 @@ grid <- expand.grid(.winnow = c(TRUE,FALSE), .trials=c(1,5,10,15,20), .model="tr
 #trails - number of boosting iterations to try, 1 indicates a single model 
 #model - type of ml model
 
+
+#tumor_mdl <- C5.0(features, target, tuneGrid=grid, trControl=fitControl, verbose=TRUE)
 tumor_mdl <- train(x=features,y=target,tuneGrid=grid,trControl=fitControl,method="C5.0"
             ,verbose=TRUE)
 
@@ -539,31 +543,39 @@ tumor_mdl
 
 #View(tumor_mdl$pred)
 
+```
+
+##### XY Plot
+```{r, message=FALSE, echo = FALSE, warning=FALSE}
 # visualize the re-sample distributions
 xyplot(tumor_mdl,type = c("g", "p", "smooth"))
 
 varImp(tumor_mdl)
 
-
-
 ```
+
+##### Prediction
+We use the tree generated previously on the training dataset to predict the tumor classes with the test dataset.
 
 ##### Evaluate Performance
 ```{r}
-wine_predict = predict(wine_mdl,test_w, type= "raw")
+
+test2$Tumor <- as.numeric(test2$Tumor)
+tumor_predict = predict(tumor_mdl, test2, type= "raw")
+
 
 #View(as_tibble(wine_predict))
 
 
 #Lets use the confusion matrix
 
-confusionMatrix(as.factor(wine_predict), as.factor(test_w$text_rank), 
+confusionMatrix(as.factor(tumor_predict), as.factor(test2$Tumor), 
                 dnn=c("Prediction", "Actual"), mode = "sens_spec")
 
-table(test_w$text_rank)
+table(test2$Tumor)
 
 
-wine_predict_p = predict(wine_mdl,test_w, type= "prob")
+tumor_predict_p = predict(tumor_mdl,test2, type= "prob")
 
 
 
