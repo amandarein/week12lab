@@ -15,11 +15,14 @@ editor_options:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+<<<<<<< HEAD
 ```{r knitr_options, include=FALSE}
 set.seed(1982)
 ```
 
 
+=======
+>>>>>>> 3a3475c4c497587849b7036405dcc89e804404ca
 ```{r load-packages, include=FALSE}
 #install.packages("rio")
 library(rio)
@@ -106,18 +109,21 @@ CART analysis tends to be more useful for binary predictions, so we think that t
 ##### Base Rate
 The base rate is 51.9% for identifying whether PR.Status is positive or not. 
 ```{r, message=FALSE, echo = FALSE, warning=FALSE}
+<<<<<<< HEAD
 cancer$PR.Status <- as.numeric(cancer$PR.Status)
 (x <- 1- sum(cancer$PR.Status)/length(cancer$PR.Status)) # 48.57% have biomarker for PR.Status
 # (x <- 1- sum(cancer$PR.Status)/length(cancer$PR.Status)) # 48.57% have biomarker for PR.Status
+=======
+>>>>>>> 3a3475c4c497587849b7036405dcc89e804404ca
 
 split <- table(cancer$PR.Status)[2] / sum(table(cancer$PR.Status))
 # split
 ```
 
 ##### Building the Model
-To build the model, we used the RPART to create a tree. From this tree, we were able to identify the most relevant variables. In this case, OS.Time was the most relevant variable. We know this because it is at the top of the tree, as you can see below, which means that it is the variable that most definitively partitions the data set to identify positive or negative PR.Status values. The relative importance of each variable can be seen in the table below.
+To build the model, we used the RPART to create a tree. From this tree, we were able to identify the most important variables (the relative importance of each variable can be seen in the table below this tree graph). In this case, OS.Time was the most important variable for the improvement of all nodes in which the attribute is a splitter. However, at the top of the tree is Age.at.Initial.Pathologic.Diagnosis, which means that Age.at.Initial.Pathologic.Diagnosis is the variable that most definitively partitions the data set to identify positive or negative PR.Status values. 
 
-Additionally, we looked at the conditional probability table. From that, we gathered that we probably was to have a tree with 2 splits to reduce the xerror (cross-validated error) as much as possible. This can be seen in the graph below, where 3 is the leftmost value below the dotted line (representing the highest cross-validated error minus the minimum cross-validated error, plus the standard deviation of the error at that tree).
+Additionally, we looked at the conditional probability table. From that, we gathered that we probably was to have a tree with 2 splits to reduce the xerror (cross-validated error) as much as possible. This can be seen in the graph below, where 2 is the leftmost value below the dotted line (representing the highest cross-validated error minus the minimum cross-validated error, plus the standard deviation of the error at that tree).
 ```{r, message=FALSE, echo = FALSE, warning=FALSE}
 #7 Build your model using the default settings
 set.seed(1981)
@@ -131,9 +137,9 @@ tree_prstatus = rpart(PR.Status~.,  #<- formula, response variable ~ predictors
 ```
 
 ```{r, message=FALSE, echo = FALSE, warning=FALSE}
-#8 View the results, what is the most important variable for the tree? 
+#8 View the results, what is the most important variable for the tree?
 
-# tree_prstatus # root, Days.to.date.of.Last.Contact
+tree_prstatus # root, Days.to.date.of.Last.Contact
 ```
 
 ```{r, message=FALSE, echo = FALSE, warning=FALSE}
@@ -157,9 +163,6 @@ cp <- tree_prstatus$cptable
 most_imp_vars <- tree_prstatus$variable.importance
 most_imp_vars
 
-
-
-
 plotcp(tree_prstatus) 
 
 cptable_ex <- as_tibble(tree_prstatus$cptable)
@@ -169,7 +172,7 @@ cptable_ex <- as_tibble(tree_prstatus$cptable)
 
 In this section, we used the tree that we created to predict the target variable, PR.Status, for each patient in the test set.
 
-After running the model on our test set, we then generated the confusion matrix to compare the results to the actual data. As it can be seen, we ran into the issue of overclassifying as negative. As such, our detection rate was incredibly low, at only 15.8%. Our error rate was 10 out of 19 test cases, which is a terrible rate. This is below the baseline, unfortunately. The error rate was 52.6%, which is not ideal. This can be seen even more through our ROC plot that only has 48.3% of the area under the curve, which demonstrates that we are not functioning above random guessing. The only value of our evaluation metrics that worked okay was the specificity of the model, which is sitting at 66.7%, showing that we were correctly identifying negative results at a decent level.
+After running the model on our test set, we then generated the confusion matrix to compare the results to the actual data. We have an accuracy of 55%, which is slightly better than our base rate. Our ROC plot below confirms this, as the line plotted is only slightly above the y = x line. Our error rate was 9 out of 20 test cases, which is certainly not ideal. Our sensitivity and specificity are also poor, meaning we will have more false positives and false negatives than we would like to. Our kappa is incredibly low too, which indicates unstable predictions. 
 ```{r, message=FALSE, echo = FALSE, warning=FALSE}
 #11 Use the predict function and your tree to predict the target variable using test set. 
 # tree_prstatus$frame
@@ -191,9 +194,10 @@ tree_predict <- ifelse(tree_predict >= 2,1,0)
 #install.packages("e1071")
 library(e1071)
 par_conf_matrix <- confusionMatrix(as.factor(tree_predict), as.factor(test$PR.Status), positive = "1", dnn=c("Prediction", "Actual"), mode = "sens_spec")
+par_conf_matrix
 
 conf_matrix <- par_conf_matrix$table
-conf_matrix
+# conf_matrix
 
 # The error rate is defined as a classification of "Parent" when 
 # this is not the case, and vice versa. It's the sum of all the
@@ -256,9 +260,9 @@ Caret analyses tend to be better suited for multi-factor or continuous classific
 
 ##### Creating Tree
 
-Using the cross validation process and tuning, we found the best combination of attributes for our tree. This ended up being only one trial and no winnowing. However, most models seemed to have a very similar accuracy, as can be seen on the accuracy versus trial plots below.
+Using the cross validation process and tuning, we found the best combination of attributes for our tree. This ended up being only one trial and winnowing. However, most models seemed to have a very similar accuracy by trial number, as can be seen on the accuracy versus trial plots below. Winnowing seemed to improve accuracy substantially, though.
 
-We ended up having to remove more columns from our data because they were causing trouble in the algorithm due to undefined cases in the test set. Because of this, we were down to only four variables. However, it was found that three of these variables were important in deciding whether PR.Status was positive or negative. Of these, OS.event was found to be the most important. The relative importance of each variable can be seen in the table below.
+We ended up having to remove more columns from our data because they were causing trouble in the algorithm due to undefined cases in the test set. Because of this, we were down to only four variables.
 
 ```{r, message=FALSE, echo = FALSE, warning=FALSE}
 #install.packages("C50")
@@ -278,9 +282,12 @@ fitControl <- trainControl(method = "repeatedcv",
 
 # Choose the features and classes
 
+<<<<<<< HEAD
 #View(training)
 # View(training)
 
+=======
+>>>>>>> 3a3475c4c497587849b7036405dcc89e804404ca
 training$PR.Status <- as.factor(training$PR.Status)
 test$PR.Status <- as.factor(test$PR.Status)
 
@@ -316,9 +323,9 @@ xyplot(PR_mdl,type = c("g", "p", "smooth"))
 
 ##### Analyzing Results
 
-As it can be seen in the confusion matrix below, our results are beginning to look promising. We never had any false negatives, which is a good thing. This is reflected in our perfect Specificity score. Our accuracy was 78.9%, which is significantly higher than that of our base rate. Further, our kappy value is 0.57, which is an okay value for that metric. Our sensitivity is the main place where we could use some work, as it is only at 55.6%. 
+As it can be seen in the confusion matrix below, our results are beginning to look promising. We never had any false negatives, which is a good thing. This is reflected in our perfect Specificity score. Our accuracy was 50%, which is slightly lower than our base rate. Further, our kappa value is 0, which states zero inter-rater reliability. Our sensitivity is also 0, which means that we have a huge issue with false positives.
 
-The overall error rate was 21.0%, which is not ideal but certainly a step in the right direction for this model. The area under the curve of our POC plot is 77.8%, which is also a great improvement over random guessing.
+The overall error rate was 50%, which is bad. The area under the curve of our POC plot is 50%, which indicates that we are performing as well as random guessing, making this model particularly useless.
 
 ```{r, message=FALSE, echo = FALSE, warning=FALSE}
 PRC50_predict = predict(PR_mdl,test, type="raw")
@@ -367,6 +374,7 @@ PR50ROC
 
 ```
 
+<<<<<<< HEAD
 
 
 
@@ -397,8 +405,13 @@ test2 = cancer2[-cancer_train_rows2, ]
 #split <- createDataPartition(cancer2$Tumor,times=1,p = 0.8,list=FALSE)
 #training2 <- cancer2[split,]
 #test2 <- cancer2[-split,]
+=======
+### Multi-Class Prediction: Tumors {.tabset}
 
-```
+Next, we will build another decision tree to predict the type of tumor a patient has. There are four classes of tumors (T1, T2, T3, T4).
+>>>>>>> 3a3475c4c497587849b7036405dcc89e804404ca
+
+#### RPART (CART style)
 
 ##### Base Rates
 
@@ -414,12 +427,19 @@ The base rates for the four tumor classes are:
 
 ```{r, message=FALSE, include = FALSE, warning=FALSE}
 # Calculate Baserates
-table(cancer2$Tumor)
+table(cancer$Tumor)
 
+<<<<<<< HEAD
 t1_base <- sum(cancer2$Tumor == "T1") / length(cancer2$Tumor) * 100 # 14.29%
 t2_base <- sum(cancer2$Tumor == "T2") / length(cancer2$Tumor) * 100 # 61.90%
 t3_base <- sum(cancer2$Tumor == "T3") / length(cancer2$Tumor) * 100 # 18.10%
 t4_base <- sum(cancer2$Tumor == "T4") / length(cancer2$Tumor) * 100 # 5.71%
+=======
+# t1_base <- sum(cancer2$Tumor == "T1") / length(cancer2$Tumor) # 14.29%
+# t2_base <- sum(cancer2$Tumor == "T2") / length(cancer2$Tumor) # 61.90%
+# t3_base <- sum(cancer2$Tumor == "T3") / length(cancer2$Tumor) # 18.10%
+# t4_base <- sum(cancer2$Tumor == "T4") / length(cancer2$Tumor) # 5.71%
+>>>>>>> 3a3475c4c497587849b7036405dcc89e804404ca
 
 ```
 
@@ -433,17 +453,21 @@ tree_tumor = rpart(Tumor~.,  #<- formula, response variable ~ predictors
                            #   "." means "use all other variables in data"
                             method = "class",#<- specify method, use "class" for tree
                             parms = list(split = "gini"),#<- method for choosing tree split
-                            data = training2,#<- data used
+                            data = training,#<- data used
                             control = rpart.control(cp=.01))
 
 ```
 
+<<<<<<< HEAD
 ```{r, message=FALSE, include = FALSE, warning=FALSE}
+=======
+Based on the model with default settings, the most important variable is Converted.Stage.
+```{r, message=FALSE, echo = FALSE, warning=FALSE}
+>>>>>>> 3a3475c4c497587849b7036405dcc89e804404ca
 # View results, most important variable
 
 tree_tumor
-
-# Most important variable is AJCC.Stage
+# Most important variable is Converted.Stage
 
 ```
 
@@ -457,14 +481,18 @@ rpart.plot(tree_tumor, type =4, extra = 101)
 ```
 
 ##### CP Chart
-The CP (complexity paramter) chart below helps us determine the optimal size of the tree. Based on our plot, the optimal size is 4.
+The CP (complexity paramter) chart below helps us determine the optimal size of the tree. Based on our plot, the optimal size is 1.
 ```{r, message=FALSE, echo = FALSE, warning=FALSE}
 # Plot the cp chart and note the optimal size of the tree (CART only).
 
 plotcp(tree_tumor) #Produces a "elbow chart" for various cp values, it's actually a terrible chart, but somewhat useful, dashed line represents the highest cross-validated error minus the minimum cross-validated error, plus the standard deviation of the error at that tree. A reasonable choice of cp for pruning is often the leftmost value where the mean is less than the horizontal line. Not the difference between the size of tree and the nsplits. Size is the number of terminal nodes.
 
 cptable_ex <- as_tibble(tree_tumor$cptable)
+<<<<<<< HEAD
 ```
+=======
+# cptable_ex
+>>>>>>> 3a3475c4c497587849b7036405dcc89e804404ca
 
 ##### Variable Importance
 Based on the model with default settings, the most important variable is AJCC.Stage, which describes the amount and spread of cancer in a patient's body.
@@ -482,12 +510,15 @@ We use the tree generated previously on the training dataset to predict the tumo
 
 #tree_tumor$frame
 
+<<<<<<< HEAD
 tree_predict2 = predict(tree_tumor, test2,type= "class")
 
+=======
+tree_predict2 = predict(tree_tumor, test, type= "class")
+>>>>>>> 3a3475c4c497587849b7036405dcc89e804404ca
 #View(as.data.frame(tree_predict2))
 
 tree_predict2 <- as.numeric(tree_predict2)
-#View(tree_predict)
 ```
 
 ##### Evaluate Performance
@@ -502,18 +533,27 @@ T4 - The error rate for T4 is 100% and the detection rate is 0%. This means that
 # Generate, "by-hand", the hit rate and detection rate and compare the
 #detection rate to your original baseline rate. How did your models work?
 
+<<<<<<< HEAD
 tum_conf_matrix = table(tree_predict2, test2$Tumor)
 tum_conf_matrix
 
 #length(tree_predict2)
 #length(test2$Tumor)
+=======
+tum_conf_matrix = table(tree_predict2, test$Tumor)
+# tum_conf_matrix
+>>>>>>> 3a3475c4c497587849b7036405dcc89e804404ca
 # The error rate is defined as a classification of "Parent" when
 # this is not the case, and vice versa. It's the sum of all the
 # values where a column contains the opposite value of the row.
 #sum(tum_conf_matrix[tum_conf_matrix[,'T1'] != tum_conf_matrix[,'T1']])
 # 59
 
+<<<<<<< HEAD
 #error_t1 = sum(tum_conf_matrix[c(2,3),1]/sum(tum_conf_matrix[,1])) * 100
+=======
+# error_t1 = sum(tum_conf_matrix[c(2,3),1]/sum(tum_conf_matrix[,1])) * 100
+>>>>>>> 3a3475c4c497587849b7036405dcc89e804404ca
 #error_t2 = sum(tum_conf_matrix[c(1,3),2]/sum(tum_conf_matrix[,2])) * 100
 #error_t3 = sum(tum_conf_matrix[c(2,1),3]/sum(tum_conf_matrix[,3])) * 100
 #error_t4 = sum(tum_conf_matrix[c(1,2,3),4]/sum(tum_conf_matrix[,4])) * 100
@@ -538,22 +578,48 @@ tum_conf_matrix
 #table(cancer2$Tumor)
 
 #We can adjust using a if else statement and the predicted prob
+tree_example_prob2 = predict(tree_tumor, test, type= "prob")
 
+<<<<<<< HEAD
 tree_example_prob2 = predict(tree_tumor, test2, type= "prob")
 
 multiclass.roc(test2$Tumor, ifelse(tree_example_prob2[,'T1'] >= .05,0,1), plot=TRUE)
 #multiclass.roc(test2$Tumor, ifelse(tree_example_prob2[,'T2'] >= .17 ,0,1), plot=TRUE)
 #multiclass.roc(test2$Tumor, ifelse(tree_example_prob2[,'T3'] >= .49,0,1), plot=TRUE)
 #multiclass.roc(test2$Tumor, ifelse(tree_example_prob2[,'T4'] >= .38,0,1), plot=TRUE)
+=======
+multiclass.roc(test$Tumor, ifelse(tree_example_prob2[,'T1'] >= .05,0,1), plot=TRUE)
+# multiclass.roc(test$Tumor, ifelse(tree_example_prob2[,'T2'] >= .17 ,0,1), plot=TRUE)
+# multiclass.roc(test$Tumor, ifelse(tree_example_prob2[,'T3'] >= .49,0,1), plot=TRUE)
+# multiclass.roc(test$Tumor, ifelse(tree_example_prob2[,'T4'] >= .38,0,1), plot=TRUE)
+>>>>>>> 3a3475c4c497587849b7036405dcc89e804404ca
 
 ```
 
 #### Caret (C5.0 Style)
+<<<<<<< HEAD
 
 ##### Building the Multi-Class C5.0 Model
 Now, we will build a multi-class decision tree for tumor detection using the C5.0 algorithm.
 ```{r, message=FALSE, include = FALSE, warning=FALSE}
+=======
+Now, we will build a multi-class decision tree for tumor detection using the C5.0 algorithm.
+```{r, message=FALSE, echo = FALSE, warning=FALSE}
+>>>>>>> 3a3475c4c497587849b7036405dcc89e804404ca
 #Cross validation process
+set.seed(2346)
+cancer_train_rows = sample(1:nrow(cancer),
+                              round(0.8 * nrow(cancer), 0),
+                              replace = FALSE)
+# Check to make sure we have 80% of the rows
+
+training = cancer[cancer_train_rows, ]
+# Rows not used in training set, aka the test set
+test = cancer[-cancer_train_rows, ]
+
+
+
+
 
 fitControl <- trainControl(method = "repeatedcv",
   number = 10,
@@ -567,15 +633,21 @@ fitControl <- trainControl(method = "repeatedcv",
 
 #View(training2)
 
+<<<<<<< HEAD
 training2 <- subset(training2, select=-c(Gender, HER2.Final.Status, Node.Coded, Metastasis, Metastasis.Coded, AJCC.Stage, Converted.Stage, Survival.Data.Form, Vital.Status))
 test2 <- subset(test2, select=-c(Gender, HER2.Final.Status, Node.Coded, Metastasis, Metastasis.Coded, AJCC.Stage, Converted.Stage, Survival.Data.Form, Vital.Status))
+=======
+training2 <- subset(training, select=-c(HER2.Final.Status, PR.Status, Node.Coded, AJCC.Stage, Converted.Stage, Survival.Data.Form, Vital.Status))
+test2 <- subset(test, select=-c(HER2.Final.Status, Node.Coded, PR.Status, AJCC.Stage, Converted.Stage, Survival.Data.Form, Vital.Status))
+>>>>>>> 3a3475c4c497587849b7036405dcc89e804404ca
 
 #features <- subset(training2, select=-c(Tumor, Gender, ER.Status))
 features <- subset(training2, select=-c(Tumor))
 target <- as.factor(training2$Tumor)
 
-str(features)
-str(target)
+# str(features)
+# table(features$Vital.Status)
+# str(target)
 
 features <- as.data.frame(features)
 
@@ -611,32 +683,44 @@ The XY plot below visualizes the accuracy for different numbers of trials. It is
 # visualize the re-sample distributions
 xyplot(tumor_mdl,type = c("g", "p", "smooth"))
 
-#varImp(tumor_mdl)
+# varImp(tumor_mdl)
 
 ```
 
 ##### Evaluate Performance
 Due to the complications with prediction, we can only evaluate our tree using 5 columns. As evident in our confusion matrix, the model does not perform very well. Although all the T2 tumors were correctly predicted, all but one of the other tumors were incorrectly classified as a T2 tumor. The accuracy is 65%, which isn't terrible, but knowing that only the T2 tumors are being classified correctly, we are not impressed with this number. We have a Kappa value of 0.0667, which is very low. Overall, the C5.0 model we generated to predict the tumor class is not successful, and is much worse in comparison to the CART model. 
+<<<<<<< HEAD
 ```{r, message=FALSE, include = FALSE, warning=FALSE}
+=======
+```{r, message=FALSE, echo = FALSE, warning=FALSE}
+>>>>>>> 3a3475c4c497587849b7036405dcc89e804404ca
 
 test2$Tumor <- as.numeric(test2$Tumor)
 tumor_predict = predict(tumor_mdl, test2, type= "raw")
-
+# View(as.data.frame(tumor_predict))
 
 #View(as_tibble(wine_predict))
 
 
 #Lets use the confusion matrix
+<<<<<<< HEAD
 
 #confusionMatrix(as.factor(tumor_predict), as.factor(test2$Tumor),
 #                dnn=c("Prediction", "Actual"), mode = "sens_spec")
+=======
+# confusionMatrix(as.factor(tumor_predict), as.factor(test2$Tumor), 
+#                 dnn=c("Prediction", "Actual"), mode = "sens_spec")
+>>>>>>> 3a3475c4c497587849b7036405dcc89e804404ca
 
 #table(test2$Tumor)
 
 
 tumor_predict_p = predict(tumor_mdl,test2, type= "prob")
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> 3a3475c4c497587849b7036405dcc89e804404ca
 ```
 
 
