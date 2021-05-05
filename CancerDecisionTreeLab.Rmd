@@ -83,10 +83,15 @@ cancer$HER2.Final.Status <- as.factor(cancer$HER2.Final.Status)
 cancer$PR.Status <- as.factor(cancer$PR.Status)
 
 
-x <- createDataPartition(cancer$PR.Status,times=1,p = 0.8,list=FALSE)
-training <- cancer[x,]
-test <- cancer[-x,]
+set.seed(1982)
+cancer_train_rows = sample(1:nrow(cancer),
+                              round(0.8 * nrow(cancer), 0),
+                              replace = FALSE)
+# Check to make sure we have 80% of the rows
 
+training = cancer[cancer_train_rows, ]
+# Rows not used in training set, aka the test set
+test = cancer[-cancer_train_rows, ]
 ```
 
 ## Analysis for PR.Status and Tumor {.tabset}
