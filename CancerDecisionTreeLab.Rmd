@@ -48,7 +48,7 @@ library(naniar)
 library(e1071)
 ```
 
-# Cleaning the Data
+## Cleaning the Data
 In order to prepare the data for decision tree training, we first removed ER.Status because it contains essentially the same information as PR.Status. Next, we removed Days.to.date.of.Death because, as the missing variable plot shows, this variable was missing for a lot of patients. Additionally, we dropped any cases after that that were not complete. 
 
 We thought that this would be enough, but we soon learned that there were some columns that had an imbalance of information, causing our models to not build correctly. We had two solutions for this problem. First, we dropped the Gender, Metastasis, and Metastasis.Coded columns because they did not provide very much information because only a couple of patients had different values. Also, we collapsed the Stage columns (AJCC.Stage and Converted.Stage) so that the information in those columns was more balanced while still maintaining the factors. To do this, we put, for example, all Stage I, Stage IA, Stage IB variables into one category. Finally, we dropped any patients that contained unique values in the columns because if they ended up in the test set, then we would run into issues introducing new values into the decision tree.
@@ -185,7 +185,7 @@ tree_predict <- as.numeric(tree_predict)
 tree_predict <- ifelse(tree_predict >= 2,1,0)
 
 #install.packages("e1071")
-library(e1071)
+#library(e1071)
 par_conf_matrix <- confusionMatrix(as.factor(tree_predict), as.factor(test$PR.Status), positive = "1", dnn=c("Prediction", "Actual"), mode = "sens_spec")
 par_conf_matrix
 
@@ -381,16 +381,17 @@ cancer2 <- cancer2[complete.cases(cancer2), ]
 # Split into train/test
 
 set.seed(1982)
-cancer_train_rows2 = sample(1:nrow(cancer2),
-                              round(0.8 * nrow(cancer2), 0),
-                              replace = FALSE)
+#cancer_train_rows = sample(1:nrow(cancer),
+                              #round(0.8 * nrow(cancer), 0),
+                              #replace = FALSE)
 
-training2 = cancer2[cancer_train_rows2, ]
-test2 = cancer2[-cancer_train_rows2, ]
 
-#split <- createDataPartition(cancer2$Tumor,times=1,p = 0.8,list=FALSE)
-#training2 <- cancer2[split,]
-#test2 <- cancer2[-split,]
+#training2 = cancer[cancer_train_rows, ]
+#test2 = cancer[-cancer_train_rows, ]
+
+split <- createDataPartition(cancer2$Tumor,times=1,p = 0.8,list=FALSE)
+training2 <- cancer2[split,]
+test2 <- cancer2[-split,]
 ```
 
 ##### Base Rates
@@ -431,7 +432,7 @@ tree_tumor = rpart(Tumor~.,  #<- formula, response variable ~ predictors
                            #   "." means "use all other variables in data"
                             method = "class",#<- specify method, use "class" for tree
                             parms = list(split = "gini"),#<- method for choosing tree split
-                            data = training,#<- data used
+                            data = training2,#<- data used
                             control = rpart.control(cp=.01))
 
 tree_tumor
@@ -454,7 +455,7 @@ The CP (complexity paramter) chart below helps us determine the optimal size of 
 ```{r, message=FALSE, echo = FALSE, warning=FALSE}
 # Plot the cp chart and note the optimal size of the tree (CART only).
 
-plotcp(tree_tumor) #Produces a "elbow chart" for various cp values, it's actually a terrible chart, but somewhat useful, dashed line represents the highest cross-validated error minus the minimum cross-validated error, plus the standard deviation of the error at that tree. A reasonable choice of cp for pruning is often the leftmost value where the mean is less than the horizontal line. Not the difference between the size of tree and the nsplits. Size is the number of terminal nodes.
+plotcp(tree_tumor) 
 
 cptable_ex <- as_tibble(tree_tumor$cptable)
 
@@ -463,7 +464,7 @@ cptable_ex <- as_tibble(tree_tumor$cptable)
 ##### Variable Importance
 Based on the model with default settings, the most important variable is AJCC.Stage, which describes the amount and spread of cancer in a patient's body.
 ```{r, message=FALSE, echo = FALSE, warning=FALSE}
-#Shows the reduction in error provided by include the variable
+
 tree_tumor$variable.importance
 
 ```
@@ -485,20 +486,21 @@ tree_predict2 = predict(tree_tumor, test2,type= "class")
 ```
 
 ##### Evaluate Performance
-Looking at the table below, the model only predicts tumors as T2 and T3, so overall the error rate is pretty high (33.33%). Since T2 and T3 tumors have the highest base rates (are most common in the data), this is not too shocking.
+Overall, the model doesn't do a great job at prediction. Based on the ROC curves below (starting with T1), the AUC is very low and does not indicate a very successful model.
 
-T1 - The error rate for T1 is 100% and the detection rate is 0%. There is only 1 T1 tumor in the test set and it is being incorrectly identified as a T2 tumor.
+T1 - The error rate for T1 is 100% and the detection rate is 0%. There are 2 T1 tumors in the test set and they are being incorrectly identified as T2 tumors.
 
-T2 = The error rate for T2 is 14.29% and the detection rate is 66.67%. Compared to the base rate of 61.90%, the model slightly improves the accuracy of predicting a T2 tumor.
+T2 = The error rate for T2 is 27.27% and the detection rate is 42.86%. Compared to the base rate of 61.90%, the model does worse at predicting a T2 tumor.
 
-T3 - The error rate for T3 is 0% and the detection rate is 14.29%. The model correctly identifies all 3 T3 tumors correctly. Compared to the base rate of 18.10%, this is a big improvement. In terms of the ROC curve, a threshold of 0.49 gives us an ROC that appears to have a slope of 1, but the AUC is 0.7585.
+T3 - The error rate for T3 is 33.33% and the detection rate is 14.29%. Compared to the base rate of 18.10%, this is not a huge improvement.
 
-T4 - This type of tumor was not used for training the model due to its low prevalence in the data. Therefore, we are unsurprised that 3 T4 tumors are being incorrectly identified as T3 tumors when we use the model.
+T4 - This type of tumor has a very low prevalence in the dataset; therefore, we are not surprised that 3 T4 tumors are being incorrectly identified as T2 and T3 tumors when we use the model.
+
 ```{r, message=FALSE, echo = FALSE, warning=FALSE}
 # Generate, "by-hand", the hit rate and detection rate and compare the
 #detection rate to your original baseline rate. How did your models work?
 
-tum_conf_matrix = table(tree_predict2, test2$Tumor)
+tum_conf_matrix = table(tree_predict2, test$Tumor)
 tum_conf_matrix
 
 #length(tree_predict2)
@@ -538,7 +540,7 @@ tum_conf_matrix
 #table(cancer2$Tumor)
 
 #We can adjust using a if else statement and the predicted prob
-tree_example_prob2 = predict(tree_tumor, test, type= "prob")
+tree_example_prob2 = predict(tree_tumor, test2, type= "prob")
 
 
 tree_example_prob2 = predict(tree_tumor, test2, type= "prob")
@@ -633,9 +635,9 @@ xyplot(tumor_mdl,type = c("g", "p", "smooth"))
 ```
 
 ##### Evaluate Performance
-Due to the complications with prediction, we can only evaluate our tree using 5 columns. As evident in our confusion matrix, the model does not perform very well. Although all the T2 tumors were correctly predicted, all but one of the other tumors were incorrectly classified as a T2 tumor. The accuracy is 66.67%, which isn't terrible, but knowing that only the T2 tumors are being classified correctly, we are not impressed with this number. We have a Kappa value of 0.0667, which is very low. Overall, the C5.0 model we generated to predict the tumor class is not successful, and is much worse in comparison to the CART model. 
+Due to the complications with prediction, we can only evaluate our tree using 5 columns. As evident in our confusion matrix, the model does not perform very well. Although all the T2 tumors were correctly predicted, all the other tumors were incorrectly classified as a T2 tumor (which is evident in the Specificity values of 1 for T1, T3 and T4 tumors). The accuracy is 66.67%, which isn't terrible, but knowing that only the T2 tumors are being classified correctly, we are not impressed with this number. We have a Kappa value of 0, which is very low. Overall, the C5.0 model we generated to predict the tumor class is not successful, and is much worse in comparison to the CART model. 
 
-```{r, message=FALSE, include = FALSE, warning=FALSE}
+```{r, message=FALSE, echo = FALSE, warning=FALSE}
 
 #test2$Tumor <- as.numeric(test2$Tumor)
 tumor_predict = predict(tumor_mdl, test2, type= "raw")
@@ -646,6 +648,7 @@ tumor_predict = predict(tumor_mdl, test2, type= "raw")
 
 #Lets use the confusion matrix
 
+set.seed(1982)
 confusionMatrix(as.factor(tumor_predict), as.factor(test2$Tumor), 
                  dnn=c("Prediction", "Actual"), mode = "sens_spec")
 
@@ -656,10 +659,11 @@ tumor_predict_p = predict(tumor_mdl,test2, type= "prob")
 
 ```
 
+## Conclusion
+Overall, this lab was challenging and the results of our models were unsuccessful. 
 
+### PR.Status
+We performed the CART and C5.0 analysis on PR.Status first (a binary variable). We expected the CART model to be more successful, which it was. However, both CART and C5.0 models were pretty bad and need to be improved. There are several ways to improve the model, but we would first suggest gathering more data, specifically more consistent and balanced data. This will make the models much more accurate for prediction. Moving forward, the models we built could be helpful in predicting whether or not someone will be positive for PR.Status, but should definitely not be used for practice. We would need to significantly improve the models before using them in practice, especially since the stakes are so high if we are using this model to detect the presence of cancer.
 
-```{r, message=FALSE, echo = FALSE, warning=FALSE}
-# 16 Summarize what you learned for each model along the way and make
-# recommendations to the world on how this could be used moving forward,
-# being careful not to over promise.
-```
+### Tumor
+We used the same two models (CART and C5.0) to build trees for our multi-class variable, tumor. There were four classes of tumors with varying prevalence in the dataset. We expected the C5.0 analysis to be better, since that algorithm is better suited for multi-class prediction. However, the CART model proved to be a bit more successful, although not good by any means. The T4 tumor had a very low prevalence in the data (only 6 indnividuals with this tumor) so it was not used for training the model. The CART model did an okay job at identifying T1, T2, and T3 variables, but could definitely be improved. The C5.0 model was surprisingly bad; due to undefined cases in the data we had to remove 10 columns. Therefore, we were only training the model on 5 variables. The model resulted in identifying all tumors as T2 tumors... definitely not the result we were hoping for. As previously mentioned, the model could likely be improved if we had more data and more balanced data that had near equal prevalence for all tumors. We definitely would not want to use this model in practice unless it is significantly improved. If we are able to improve the model, it could be useful in predicting whether or not a patient as a malignant/cancerous tumor.
