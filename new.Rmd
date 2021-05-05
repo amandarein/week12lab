@@ -93,16 +93,16 @@ training = cancer[cancer_train_rows, ]
 test = cancer[-cancer_train_rows, ]
 ```
 
-## Analysis for PR.Status and Tumor {.tabset}
+# Analysis for PR.Status and Tumor {.tabset}
 
 After cleaning our data, we began our analysis on both the PR.Status variable and the Tumor variable. Since PR.Status is a binary variable, we chose to run a CART-style analysis to create a decision tree. On the other hand, Tumor is a multi-class variable, so a C5.0 analysis makes more sense. 
 
-### PR.Status {.tabset}
+## PR.Status {.tabset}
 
-#### RPart (CART style)
+### RPart (CART style)
 CART analysis tends to be more useful for binary predictions, so we think that this type of tree model will work best for the PR.Status variable.
 
-##### Base Rate
+#### Base Rate
 The base rate is 51.9% for identifying whether PR.Status is positive or not. 
 ```{r, message=FALSE, echo = FALSE, warning=FALSE}
 cancer$PR.Status <- as.numeric(cancer$PR.Status)
@@ -111,7 +111,7 @@ split <- table(cancer$PR.Status)[2] / sum(table(cancer$PR.Status))
 # split
 ```
 
-##### Building the Model
+#### Building the Model
 To build the model, we used the RPART to create a tree. From this tree, we were able to identify the most important variables (the relative importance of each variable can be seen in the table below this tree graph). In this case, OS.Time was the most important variable for the improvement of all nodes in which the attribute is a splitter. However, at the top of the tree is Age.at.Initial.Pathologic.Diagnosis, which means that Age.at.Initial.Pathologic.Diagnosis is the variable that most definitively partitions the data set to identify positive or negative PR.Status values. 
 
 Additionally, we looked at the conditional probability table. From that, we gathered that we probably was to have a tree with 2 splits to reduce the xerror (cross-validated error) as much as possible. This can be seen in the graph below, where 2 is the leftmost value below the dotted line (representing the highest cross-validated error minus the minimum cross-validated error, plus the standard deviation of the error at that tree).
@@ -159,7 +159,7 @@ plotcp(tree_prstatus)
 cptable_ex <- as_tibble(tree_prstatus$cptable)
 ```
 
-##### Prediction and Error Analysis
+#### Prediction and Error Analysis
 
 In this section, we used the tree that we created to predict the target variable, PR.Status, for each patient in the test set.
 
@@ -245,11 +245,11 @@ con_PR_RPART = confusionMatrix(as.factor(tree_predict), as.factor(test$PR.Status
 # plot(par_roc)
 ```
 
-#### Caret (C5.0 style)
+### Caret (C5.0 style)
 
 Caret analyses tend to be better suited for multi-factor or continuous classifications, so we assume that this type of modelling will be worst for identifying the PR.Status variable.
 
-##### Creating Tree
+#### Creating Tree
 
 Using the cross validation process and tuning, we found the best combination of attributes for our tree. This ended up being only one trial and winnowing. However, most models seemed to have a very similar accuracy by trial number, as can be seen on the accuracy versus trial plots below. Winnowing seemed to improve accuracy substantially, though.
 
@@ -309,7 +309,7 @@ xyplot(PR_mdl,type = c("g", "p", "smooth"))
 #varImp(PR_mdl)
 ```
 
-##### Analyzing Results
+#### Analyzing Results
 
 As it can be seen in the confusion matrix below, our results are beginning to look promising. We never had any false negatives, which is a good thing. This is reflected in our perfect Specificity score. Our accuracy was 50%, which is slightly lower than our base rate. Further, our kappa value is 0, which states zero inter-rater reliability. Our sensitivity is also 0, which means that we have a huge issue with false positives.
 
@@ -362,11 +362,11 @@ PR50ROC
 
 ```
 
-### Multi-Class Prediction: Tumors {.tabset}
+## Multi-Class Prediction: Tumors {.tabset}
 
 Next, we will build another decision tree to predict the type of tumor a patient has. There are four classes of tumors (T1, T2, T3, T4).
 
-#### RPART (CART style)
+### RPART (CART style)
 ```{r, message=FALSE, echo = FALSE, warning=FALSE}
 #15 Follow the same steps for the multi-class target, tumor, aside from step 1,
 # 2 and 14. For step 13 compare to the four base rates and see how you did.
@@ -412,7 +412,7 @@ test2 = cancer2[-cancer_train_rows2, ]
 #test2 <- cancer2[-split,]
 ```
 
-##### Base Rates
+#### Base Rates
 
 The base rates for the four tumor classes are:
 
@@ -435,7 +435,7 @@ table(cancer2$Tumor)
 
 ```
 
-##### Building the Multi-Class CART Model
+#### Building the Multi-Class CART Model
 We first built a tree using the Classification and Regression Tree (CART) method.
 ```{r, message=FALSE, include = FALSE, warning=FALSE}
 # Build model with default settings
@@ -453,7 +453,7 @@ tree_tumor
 
 ```
 
-##### Decision Tree Plot
+#### Decision Tree Plot
 As we can see in the plot below, T3 and T4 are not used for training. This is unsurprising since there are very few individuals in the dataset with T3 and T4 tumors.
 ```{r, message=FALSE, echo = FALSE, warning=FALSE}
 # Plot the tree using the rpart.plot package (CART only).
@@ -463,7 +463,7 @@ rpart.plot(tree_tumor, type =4, extra = 101)
 #View(tree_tumor$cptable)
 ```
 
-##### CP Chart
+#### CP Chart
 The CP (complexity paramter) chart below helps us determine the optimal size of the tree. Based on our plot, the optimal size is 2.
 ```{r, message=FALSE, echo = FALSE, warning=FALSE}
 # Plot the cp chart and note the optimal size of the tree (CART only).
@@ -474,7 +474,7 @@ cptable_ex <- as_tibble(tree_tumor$cptable)
 
 ```
 
-##### Variable Importance
+#### Variable Importance
 Based on the model with default settings, the most important variable is Converted.Stage.
 ```{r, message=FALSE, echo = FALSE, warning=FALSE}
 #Shows the reduction in error provided by include the variable
@@ -482,7 +482,7 @@ tree_tumor$variable.importance
 
 ```
 
-##### Prediction
+#### Prediction
 We use the tree generated previously on the training dataset to predict the tumor classes with the test dataset.
 ```{r, message=FALSE, include = FALSE, warning=FALSE}
 
@@ -497,7 +497,7 @@ tree_predict2 = predict(tree_tumor, test2,type= "class")
 
 ```
 
-##### Evaluate Performance
+#### Evaluate Performance
 Looking at the table below, the model only predicts tumors as T2, so overall the error rate is pretty high (40%). Since T2 has one of the highest base rates (as it is the most common in the data), this is not too shocking.
 
 T2 = The error rate for T2 is 40% and the detection rate is 60%. Compared to the base rate of 61.90%, the model is not helpful for predicting T2.
@@ -558,9 +558,9 @@ multiclass.roc(test2$Tumor, ifelse(tree_example_prob2[,'T1'] >= .05,0,1), plot=T
 
 ```
 
-#### Caret (C5.0 Style)
+### Caret (C5.0 Style)
 
-##### Building the Multi-Class C5.0 Model
+#### Building the Multi-Class C5.0 Model
 Now, we will build a multi-class decision tree for tumor detection using the C5.0 algorithm.
 ```{r, message=FALSE, include = FALSE, warning=FALSE}
 #Cross validation process
@@ -623,7 +623,7 @@ tumor_mdl
 
 ```
 
-##### Creating Tree
+#### Creating Tree
 The XY plot below visualizes the accuracy for different numbers of trials. It is clear that the number of trials does not have a significant impact on the accuracy. When creating the tree, we encountered issues with predicting the model on the test data. If we use all columns in the dataset for prediction, we can create a tree with up to 83% accuracy. Due to undefined cases in the data, we are unable to use this model for prediction. Therefore, we removed 10 columns in order to create a tree that is useful for prediction. 
 
 ```{r, message=FALSE, echo = FALSE, warning=FALSE}
@@ -634,7 +634,7 @@ xyplot(tumor_mdl,type = c("g", "p", "smooth"))
 
 ```
 
-##### Evaluate Performance
+#### Evaluate Performance
 We ended up using 1 trial, a tree model, and winnowing because it was found to maximize accuracy. This can be seen in the plot below, in which number of trials doesn't make much of a difference but winnowing increases accuracy a bit.
 
 Due to the complications with prediction, we can only evaluate our tree using a few columns. As evident in our confusion matrix, the model does not perform very well. The accuracy is 60%, which isn't terrible, but knowing that only the T2 tumors are being predicted, we are not impressed with this number. We have a Kappa value of 0, which is the worst that it could be! Overall, the C5.0 model we generated to predict the tumor class is not successful and is much worse in comparison to the CART model. 
@@ -653,3 +653,11 @@ tumor_predict_p = predict(tumor_mdl,test2, type= "prob")
 ```
 
 # Conclusion
+
+For the PR.Status variable, both of the analyses we ran were not great. However, the CART style or classification ended up creating a tree that was at least most accurate than our base rate, so this was a better type of analysis than the C5.0 analysis for this variable. This is in line with what we expected, given that we were told that the RCART analysis would be better for a binary analysis. There are many ways to improve this model moving forward, including having a more robust and balanced data set. This model, especially the CART-style analysis, has the potential to be helpful for identification of PR status moving forward. However, as both models are now, they should not be used, especially since this is predicting such a high stakes variable because it is related to health.
+
+For the Tumor variable, neither analysis worked particularly well. The accuracy of the C5.0 model was better than that of CART style analysis, which is also in line with what we were taught in terms of CARET-style analyses being better for multi-class or continuous data types. Both models pretty much were only predicting tumors to be T2, likely because most of the training data was dominated by T2 tumors. In order to improve the models for this variable, we probably need a more robust data set that is more balanced, so that we are able to better understand what factors are related to the variable of interest. Additionally, it would be good if we didn't need to cut out so many of the columns/variables from our analysis, as that would likely improve the accuracy of the model (unless they are not related at all, but we cannot know that unless they are a part of the model).
+
+In this lab, we ran into many issues while analyzing the data. First of all, the results differ greatly depending on where/how you partition the data, which made our results inconsistent until we were able to find a way to standardize the output. Additionally, a lot of the variables had to be removed from analysis for seemingly no reason for the C5.0 analysis. The function had issues due to undefined cases/bad values, even though it seemed on a high level that each case was represented in both the training and test sets. Finding a way to fix that and use all the variables would have definitely helped.
+
+Moving forward, it would be very helpful to have had a more robust data set. We also would have benefited from being able to have used all of the variables, so it would have been better if the function would be more intuitive. That way, we would be able to modify the data accordingly. On the other hand, if the issue is truly just a lack of representation of data, then the more robust data set would also fix this issue. Neither of these models should be used in the real world as they are now, but I can definitely see after running the analyses and seeing the in class example how these types of models can be helpful for some situations.
