@@ -60,7 +60,7 @@ library(rpart.plot)
 library(rattle)
 # setwd("/cloud/project/decision_trees")
 #install.packages("caret")
-install.packages("caret")
+#install.packages("caret")
 library(caret)
 #install.packages("C50")
 #install.packages("mlbench")
@@ -122,6 +122,7 @@ CART analysis tends to be more useful for binary predictions, so we think that t
 ##### Base Rate
 The base rate is 51.4% for identifying whether PR.Status is positive or not. 
 ```{r, message=FALSE, echo = FALSE, warning=FALSE}
+cancer$PR.Status <- as.numeric(cancer$PR.Status)
 (x <- 1- sum(cancer$PR.Status)/length(cancer$PR.Status)) # 48.57% have biomarker for PR.Status
 
 split <- table(cancer$PR.Status)[2] / sum(table(cancer$PR.Status))
@@ -202,7 +203,7 @@ tree_predict <- as.numeric(tree_predict)
 
 tree_predict <- ifelse(tree_predict >= 2,1,0)
 
-install.packages("e1071")
+#install.packages("e1071")
 library(e1071)
 par_conf_matrix <- confusionMatrix(as.factor(tree_predict), as.factor(test$PR.Status), positive = "1", dnn=c("Prediction", "Actual"), mode = "sens_spec")
 
@@ -276,9 +277,9 @@ Using the cross validation process and tuning, we found the best combination of 
 We ended up having to remove more columns from our data because they were causing trouble in the algorithm due to undefined cases in the test set. Because of this, we were down to only four variables. However, it was found that three of these variables were important in deciding whether PR.Status was positive or negative. Of these, OS.event was found to be the most important. The relative importance of each variable can be seen in the table below.
 
 ```{r, message=FALSE, echo = FALSE, warning=FALSE}
-install.packages("C50")
+#install.packages("C50")
 library(C50) #Need this to pass into caret 
-install.packages("mlbench")
+#install.packages("mlbench")
 library(mlbench)
 
 #Cross validation process 
@@ -293,7 +294,7 @@ fitControl <- trainControl(method = "repeatedcv",
 
 # Choose the features and classes
 
-View(training)
+#View(training)
 
 training$PR.Status <- as.factor(training$PR.Status)
 test$PR.Status <- as.factor(test$PR.Status)
@@ -325,7 +326,7 @@ PR_mdl <- train(x=features,y=target,tuneGrid=grid,trControl=fitControl,method="C
 # visualize the re-sample distributions
 xyplot(PR_mdl,type = c("g", "p", "smooth"))
 
-varImp(PR_mdl)
+#varImp(PR_mdl)
 ```
 
 ##### Analyzing Results
@@ -394,7 +395,6 @@ Next, we will build another decision tree to predict the type of tumor a patient
 cancer2 <- tibble(import("clinical_breast_cleaned.csv", check.names= TRUE))
 cancer2 <- select(cancer2, -c(Days.to.date.of.Death)) #Days.to.date.of.Death has lots of missing values, rest has new levels in predict
 cancer2 <- cancer2[complete.cases(cancer2), ]
-describe(cancer2)
 ```
 
 ```{r, message=FALSE, echo = FALSE, warning=FALSE}
@@ -433,7 +433,7 @@ t4_base <- sum(cancer2$Tumor == "T4") / length(cancer2$Tumor) # 5.71%
 ```{r, message=FALSE, echo = FALSE, warning=FALSE}
 # Build model with default settings
 
-set.seed(1981)
+set.seed(1900)
 tree_tumor = rpart(Tumor~.,  #<- formula, response variable ~ predictors
                            #   "." means "use all other variables in data"
                             method = "class",#<- specify method, use "class" for tree
@@ -494,6 +494,13 @@ tree_predict2 <- as.numeric(tree_predict2)
 ```
 
 ##### Evaluate Performance
+T1 - The error rate for T1 is 33.33% and the detection rate is 66.67%. Compared to the base rate of 14.29%, the model does a decent job at predicting T1 tumors. In terms of the ROC curve, a threshold of 0.05 maximizes the AUC at 0.6816.
+
+T2 = The error rate for T2 is 23.08% and the detection rate is 76.92%. Compared to the base rate of 61.90%, the model improves the accuracy of predicting a T2 tumor. The ROC curve with a threshold of 0.17 maximizes the AUC at 0.6752.
+
+T3 - The error rate for T3 is 33.33% and the detection rate is 66.67%. Compared to the base rate of 18.10%, the model significantly improves the accuracy of predicting a T3 tumor. In terms of the ROC curve, a threshold of 0.49 gives us an ROC that appears to have a slope of 1, but the AUC is 0.7585. Therefore, the ROC curve for T3 tumors is not entirely accurate and we should be cautious with information provided by this curve.
+
+T4 - The error rate for T4 is 100% and the detection rate is 0%. This means that the test set had only 1 individual with a T4 tumor, and that tumor was not correctly predicted. Since there are only 6 individuals with T4 tumors in the original dataset, this is not too shocking. Although the ROC curve is not particularly useful in this situation, we achieve an AUC of 0.485 when the threshold is set to 0.38. 
 ```{r, message=FALSE, echo = FALSE, warning=FALSE}
 # Generate, "by-hand", the hit rate and detection rate and compare the 
 #detection rate to your original baseline rate. How did your models work?
@@ -507,9 +514,9 @@ tum_conf_matrix = table(tree_predict2, test2$Tumor)
 # 59
 
 error_t1 = sum(tum_conf_matrix[c(2,3),1]/sum(tum_conf_matrix[,1])) * 100
-error_t2 = sum(tum_conf_matrix[c(1,3),2]/sum(tum_conf_matrix[,2])) * 100
-error_t3 = sum(tum_conf_matrix[c(2,1),3]/sum(tum_conf_matrix[,3])) * 100
-error_t4 = sum(tum_conf_matrix[c(1,2,3),4]/sum(tum_conf_matrix[,4])) * 100
+#error_t2 = sum(tum_conf_matrix[c(1,3),2]/sum(tum_conf_matrix[,2])) * 100
+#error_t3 = sum(tum_conf_matrix[c(2,1),3]/sum(tum_conf_matrix[,3])) * 100
+#error_t4 = sum(tum_conf_matrix[c(1,2,3),4]/sum(tum_conf_matrix[,4])) * 100
 
 # The error rate divides this figure by the total number of data points
 # for which the forecast is created.
@@ -518,42 +525,35 @@ error_t4 = sum(tum_conf_matrix[c(1,2,3),4]/sum(tum_conf_matrix[,4])) * 100
 # Let's use these values in 1 calculation.
 #tum_error_rate = sum(tum_conf_matrix[row(tum_conf_matrix) != col(tum_conf_matrix)]) / sum(tum_conf_matrix)
 
-paste0("Hit Rate/True Error Rate:", tum_error_rate * 100, "%")
+#paste0("Hit Rate/True Error Rate:", tum_error_rate * 100, "%")
 
 #Detection Rate is the rate at which the algo detects the positive class in proportion to the entire classification A/(A+B+C+D) where A is poss correctly predicted
-tum_conf_matrix
+#tum_conf_matrix
 
-det_t1 = tum_conf_matrix[1,1]/sum(tum_conf_matrix[,1]) * 100
-det_t2 = tum_conf_matrix[2,2]/sum(tum_conf_matrix[,2]) * 100
-det_t3 = tum_conf_matrix[3,3]/sum(tum_conf_matrix[,3]) * 100
-det_t4 = tum_conf_matrix[3,4]/sum(tum_conf_matrix[,4]) * 100
+#det_t1 = tum_conf_matrix[1,1]/sum(tum_conf_matrix[,1]) * 100
+#det_t2 = tum_conf_matrix[2,2]/sum(tum_conf_matrix[,2]) * 100
+#det_t3 = tum_conf_matrix[3,3]/sum(tum_conf_matrix[,3]) * 100
+#det_t4 = tum_conf_matrix[3,4]/sum(tum_conf_matrix[,4]) * 100
 
 #table(cancer2$Tumor)
 
 #We can adjust using a if else statement and the predicted prob
 
-tree_example_prob2 = predict(tree_tumor, test2, type= "prob")
+#tree_example_prob2 = predict(tree_tumor, test2, type= "prob")
  
-multiclass.roc(test2$Tumor, ifelse(tree_example_prob2[,'T1'] >= .05,0,1), plot=TRUE)
-multiclass.roc(test2$Tumor, ifelse(tree_example_prob2[,'T2'] >= .17 ,0,1), plot=TRUE)
-multiclass.roc(test2$Tumor, ifelse(tree_example_prob2[,'T3'] >= .49,0,1), plot=TRUE)
-multiclass.roc(test2$Tumor, ifelse(tree_example_prob2[,'T4'] >= .38,0,1), plot=TRUE)
+#multiclass.roc(test2$Tumor, ifelse(tree_example_prob2[,'T1'] >= .05,0,1), plot=TRUE)
+#multiclass.roc(test2$Tumor, ifelse(tree_example_prob2[,'T2'] >= .17 ,0,1), plot=TRUE)
+#multiclass.roc(test2$Tumor, ifelse(tree_example_prob2[,'T3'] >= .49,0,1), plot=TRUE)
+#multiclass.roc(test2$Tumor, ifelse(tree_example_prob2[,'T4'] >= .38,0,1), plot=TRUE)
 
 ```
-T1 - The error rate for T1 is 33.33% and the detection rate is 66.67%. Compared to the base rate of 14.29%, the model does a decent job at predicting T1 tumors. In terms of the ROC curve, a threshold of 0.05 maximizes the AUC at 0.6816.
-
-T2 = The error rate for T2 is 23.08% and the detection rate is 76.92%. Compared to the base rate of 61.90%, the model improves the accuracy of predicting a T2 tumor. The ROC curve with a threshold of 0.17 maximizes the AUC at 0.6752.
-
-T3 - The error rate for T3 is 33.33% and the detection rate is 66.67%. Compared to the base rate of 18.10%, the model significantly improves the accuracy of predicting a T3 tumor. In terms of the ROC curve, a threshold of 0.49 gives us an ROC that appears to have a slope of 1, but the AUC is 0.7585. Therefore, the ROC curve for T3 tumors is not entirely accurate and we should be cautious with information provided by this curve.
-
-T4 - The error rate for T4 is 100% and the detection rate is 0%. This means that the test set had only 1 individual with a T4 tumor, and that tumor was not correctly predicted. Since there are only 6 individuals with T4 tumors in the original dataset, this is not too shocking. Although the ROC curve is not particularly useful in this situation, we achieve an AUC of 0.485 when the threshold is set to 0.38. 
-
 
 #### Building the Multi-Class C5.0 Model
 Now, we will build a multi-class decision tree for tumor detection using the C5.0 algorithm.
 ```{r}
 #Cross validation process 
 
+set.seed(1981)
 fitControl <- trainControl(method = "repeatedcv",
   number = 10,
   repeats = 5, returnResamp="all") #setting up our cross validation
@@ -569,7 +569,8 @@ fitControl <- trainControl(method = "repeatedcv",
 training2 <- subset(training2, select=-c(Gender, ER.Status, HER2.Final.Status, Node.Coded, Metastasis, Metastasis.Coded, AJCC.Stage, Converted.Stage, Survival.Data.Form, Vital.Status))
 test2 <- subset(test2, select=-c(Gender, ER.Status, HER2.Final.Status, Node.Coded, Metastasis, Metastasis.Coded, AJCC.Stage, Converted.Stage, Survival.Data.Form, Vital.Status))
 
-features <- subset(training2, select=-c(Tumor,Gender))
+#features <- subset(training2, select=-c(Tumor, Gender, ER.Status))
+features <- subset(training2, select=-c(Tumor))
 target <- as.factor(training2$Tumor)
 
 str(features)
@@ -588,6 +589,7 @@ grid <- expand.grid(.winnow = c(TRUE,FALSE), .trials=c(1,5,10,15,20), .model="tr
 
 
 #tumor_mdl <- C5.0(features, target, tuneGrid=grid, trControl=fitControl, verbose=TRUE)
+set.seed(1981)
 tumor_mdl <- train(x=features,y=target,tuneGrid=grid,trControl=fitControl,method="C5.0"
             ,verbose=TRUE)
 
@@ -597,19 +599,19 @@ tumor_mdl
 
 ```
 
-##### XY Plot
+##### Creating Tree
+The XY plot below visualizes the accuracy for different numbers of trials. It is clear that the number of trials does not have a significant impact on the accuracy. When creating the tree, we encountered issues with predicting the model on the test data. If we use all columns in the dataset for prediction, we can create a tree with up to 83% accuracy. However, due to undefined cases in the data, we are unable to use this model for prediction. Therefore, we removed 10 columns in order to create a tree that is useful for prediction. 
+
 ```{r, message=FALSE, echo = FALSE, warning=FALSE}
 # visualize the re-sample distributions
-xyplot(tumor_mdl,type = c("g", "p", "smooth"))
+#xyplot(tumor_mdl,type = c("g", "p", "smooth"))
 
-varImp(tumor_mdl)
+#varImp(tumor_mdl)
 
 ```
 
-##### Prediction
-We use the tree generated previously on the training dataset to predict the tumor classes with the test dataset.
-
 ##### Evaluate Performance
+Due to the complications with prediction, we can only evaluate our tree using 5 columns. As evident in our confusion matrix, the model does not perform very well. Although all the T2 tumors were correctly predicted, all but one of the other tumors were incorrectly classified as a T2 tumor. The accuracy is 65%, which isn't terrible, but knowing that only the T2 tumors are being classified correctly, we are not impressed with this number. We have a Kappa value of 0.0667, which is very low. Overall, the C5.0 model we generated to predict the tumor class is not successful, and is much worse in comparison to the CART model. 
 ```{r}
 
 test2$Tumor <- as.numeric(test2$Tumor)
@@ -624,7 +626,7 @@ tumor_predict = predict(tumor_mdl, test2, type= "raw")
 confusionMatrix(as.factor(tumor_predict), as.factor(test2$Tumor), 
                 dnn=c("Prediction", "Actual"), mode = "sens_spec")
 
-table(test2$Tumor)
+#table(test2$Tumor)
 
 
 tumor_predict_p = predict(tumor_mdl,test2, type= "prob")
